@@ -142,12 +142,12 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-900">
       <Navigation />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">{team.name}</h1>
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-white">{team.name}</h1>
           {isCaptain && !isEditing && (
             <div className="flex gap-2">
               <Button onClick={handleEdit}>Edit</Button>
@@ -162,7 +162,7 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
           </div>
         )}
 
-        <div className="border border-black p-6 mb-8">
+        <div className="border border-gray-700 bg-gray-800 rounded-2xl shadow-2xl p-10 mb-8">
           {isEditing ? (
             <form onSubmit={handleSave} className="flex flex-col gap-4">
               <Input
@@ -173,12 +173,12 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
               />
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium">Description</label>
+                <label className="text-sm font-medium text-white">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   required
-                  className="px-3 py-2 border border-black bg-white"
+                  className="px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-500 transition-colors"
                   rows={4}
                 />
               </div>
@@ -210,16 +210,16 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <div className="flex flex-col gap-4">
               <div>
                 <p className="text-sm text-gray-600">Description</p>
-                <p>{team.description}</p>
+                <p className="text-gray-300">{team.description}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Location</p>
-                  <p>{team.city}, {team.country}</p>
+                  <p className="text-gray-300">{team.city}, {team.country}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Created</p>
-                  <p>{team.created}</p>
+                  <p className="text-gray-300">{team.created}</p>
                 </div>
               </div>
             </div>
@@ -227,15 +227,15 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
         </div>
 
         <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Team Members</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-white">Team Members</h2>
             {isCaptain && !isAddingMember && (
               <Button onClick={() => setIsAddingMember(true)}>Add Member</Button>
             )}
           </div>
 
           {isAddingMember && (
-            <form onSubmit={handleAddMember} className="border border-black p-4 mb-4">
+            <form onSubmit={handleAddMember} className="border border-gray-700 bg-gray-800 rounded-xl shadow-lg p-6 mb-4">
               <Input
                 label="Username"
                 value={newMemberUsername}
@@ -257,8 +257,8 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
               <Card key={membership.id}>
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-bold">{user!.name} {user!.surname}</p>
-                    <p className="text-sm text-gray-600">@{user!.username} - {membership.role}</p>
+                    <p className="font-bold text-white">{user!.name} {user!.surname}</p>
+                    <p className="text-sm text-gray-400">@{user!.username} - {membership.role}</p>
                     <p className="text-xs text-gray-500">Member since {membership.memberSince}</p>
                   </div>
                   {isCaptain && membership.role !== 'Captain' && (

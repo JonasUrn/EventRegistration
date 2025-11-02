@@ -101,11 +101,11 @@ const AccountPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-900">
       <Navigation />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">My Account</h1>
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <h1 className="text-3xl font-bold mb-8 text-white">My Account</h1>
 
         {message && (
           <div className="mb-4">
@@ -113,9 +113,9 @@ const AccountPage = () => {
           </div>
         )}
 
-        <div className="border border-black p-6 mb-8">
+        <div className="border border-gray-700 bg-gray-800 rounded-2xl shadow-2xl p-10 mb-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">Profile Information</h2>
+            <h2 className="text-xl font-bold text-white">Profile Information</h2>
             {!isEditing && (
               <div className="flex gap-2">
                 <Button onClick={handleEdit}>Edit</Button>
@@ -200,35 +200,35 @@ const AccountPage = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Name</p>
-                <p className="font-medium">{currentUser.name} {currentUser.surname}</p>
+                <p className="font-medium text-gray-300">{currentUser.name} {currentUser.surname}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Username</p>
-                <p className="font-medium">{currentUser.username}</p>
+                <p className="font-medium text-gray-300">{currentUser.username}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium">{currentUser.email}</p>
+                <p className="font-medium text-gray-300">{currentUser.email}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Phone</p>
-                <p className="font-medium">{currentUser.phoneNo}</p>
+                <p className="font-medium text-gray-300">{currentUser.phoneNo}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Birth Date</p>
-                <p className="font-medium">{currentUser.birthDate}</p>
+                <p className="font-medium text-gray-300">{currentUser.birthDate}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Sex</p>
-                <p className="font-medium">{currentUser.sex}</p>
+                <p className="font-medium text-gray-300">{currentUser.sex}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Location</p>
-                <p className="font-medium">{currentUser.city}, {currentUser.country}</p>
+                <p className="font-medium text-gray-300">{currentUser.city}, {currentUser.country}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Role</p>
-                <p className="font-medium">
+                <p className="font-medium text-gray-300">
                   {currentUser.isAdministrator ? 'Administrator' : currentUser.isOrganizer ? 'Organizer' : 'User'}
                 </p>
               </div>
@@ -237,19 +237,19 @@ const AccountPage = () => {
         </div>
 
         <div>
-          <h2 className="text-xl font-bold mb-4">My Teams</h2>
+          <h2 className="text-xl font-bold mb-6 text-white">My Teams</h2>
           {userTeams.length === 0 ? (
-            <p className="text-gray-600">You are not part of any teams yet.</p>
+            <p className="text-gray-400">You are not part of any teams yet.</p>
           ) : (
             <div className="flex flex-col gap-4">
               {userTeams.map(({ membership, team }) => (
                 <Card key={membership.id} onClick={() => router.push(`/teams/${team!.id}`)}>
                   <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="font-bold">{team!.name}</h3>
-                      <p className="text-sm text-gray-600">{membership.role} since {membership.memberSince}</p>
+                      <h3 className="font-bold text-white">{team!.name}</h3>
+                      <p className="text-sm text-gray-400">{membership.role} since {membership.memberSince}</p>
                     </div>
-                    <p className="text-sm">{team!.city}, {team!.country}</p>
+                    <p className="text-sm text-gray-400">{team!.city}, {team!.country}</p>
                   </div>
                 </Card>
               ))}

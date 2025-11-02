@@ -48,17 +48,17 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white py-8">
-      <div className="w-full max-w-2xl p-8 border border-black">
-        <h1 className="text-2xl font-bold mb-6">Register</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 py-8 px-4">
+      <div className="w-full max-w-2xl p-10 bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
+        <h1 className="text-3xl font-bold mb-8 text-white text-center">Register</h1>
 
         {message && (
-          <div className="mb-4">
+          <div className="mb-6">
             <Message type={message.type}>{message.text}</Message>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Name"
@@ -142,16 +142,17 @@ const RegisterPage = () => {
             />
           </div>
 
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-gray-300">
             <input
               type="checkbox"
               checked={formData.isOrganizer}
               onChange={(e) => setFormData({ ...formData, isOrganizer: e.target.checked })}
+              className="w-4 h-4"
             />
             Register as Organizer
           </label>
 
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-3 mt-6">
             <Button type="submit">Register</Button>
             <Button variant="secondary" onClick={() => router.push('/login')}>
               Back to Login

@@ -28,17 +28,17 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="w-full max-w-md p-8 border border-black">
-        <h1 className="text-2xl font-bold mb-6">Login</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
+      <div className="w-full max-w-md p-10 bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
+        <h1 className="text-3xl font-bold mb-8 text-white text-center">Login</h1>
 
         {message && (
-          <div className="mb-4">
+          <div className="mb-6">
             <Message type={message.type}>{message.text}</Message>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <Input
             label="Username"
             value={username}
@@ -54,7 +54,7 @@ const LoginPage = () => {
             required
           />
 
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-3 mt-6">
             <Button type="submit">Login</Button>
             <Button variant="secondary" onClick={() => router.push('/register')}>
               Register

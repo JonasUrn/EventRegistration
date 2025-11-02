@@ -69,11 +69,11 @@ const CreateTeamPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-900">
       <Navigation />
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Create Team</h1>
+      <div className="max-w-2xl mx-auto px-6 py-12">
+        <h1 className="text-3xl font-bold mb-8 text-white">Create Team</h1>
 
         {message && (
           <div className="mb-4">
@@ -81,7 +81,7 @@ const CreateTeamPage = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="border border-black p-6 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="border border-gray-700 bg-gray-800 rounded-2xl shadow-2xl p-10 flex flex-col gap-4">
           <Input
             label="Team Name"
             value={formData.name}
@@ -90,12 +90,12 @@ const CreateTeamPage = () => {
           />
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Description</label>
+            <label className="text-sm font-medium text-white">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
-              className="px-3 py-2 border border-black bg-white"
+              className="px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-500 transition-colors"
               rows={4}
             />
           </div>

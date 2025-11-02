@@ -110,12 +110,12 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-900">
       <Navigation />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">{game.name}</h1>
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-white">{game.name}</h1>
           {isCreator && !isEditing && (
             <div className="flex gap-2">
               <Button onClick={handleEdit}>Edit</Button>
@@ -130,7 +130,7 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
           </div>
         )}
 
-        <div className="border border-black p-6 mb-6">
+        <div className="border border-gray-700 bg-gray-800 rounded-2xl shadow-2xl p-10 mb-6">
           {isEditing ? (
             <form onSubmit={handleSave} className="flex flex-col gap-4">
               <Input
@@ -187,26 +187,26 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <div className="flex flex-col gap-4">
               <div>
                 <p className="text-sm text-gray-600">Tournament</p>
-                <p className="font-medium">{tournament?.name || 'Unknown'}</p>
+                <p className="font-medium text-gray-300">{tournament?.name || 'Unknown'}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Start</p>
-                  <p>{formatDateTime(game.start)}</p>
+                  <p className="text-gray-300">{formatDateTime(game.start)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">End</p>
-                  <p>{formatDateTime(game.end)}</p>
+                  <p className="text-gray-300">{formatDateTime(game.end)}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Winner Points</p>
-                  <p>{game.winnerPts}</p>
+                  <p className="text-gray-300">{game.winnerPts}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Loser Points</p>
-                  <p>{game.loserPts}</p>
+                  <p className="text-gray-300">{game.loserPts}</p>
                 </div>
               </div>
             </div>
@@ -219,18 +219,18 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
         {gameRefs.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-xl font-bold mb-4">Referees</h2>
+            <h2 className="text-xl font-bold mb-6 text-white">Referees</h2>
             <div className="flex flex-col gap-2">
               {gameRefs.map(referee => (
                 <Card key={referee!.id}>
                   <div className="flex justify-between">
                     <div>
-                      <p className="font-bold">{referee!.name} {referee!.surname}</p>
-                      <p className="text-sm text-gray-600">{referee!.email}</p>
+                      <p className="font-bold text-white">{referee!.name} {referee!.surname}</p>
+                      <p className="text-sm text-gray-400">{referee!.email}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-600">License</p>
-                      <p className="text-sm font-medium">{referee!.licenseNumber}</p>
+                      <p className="text-sm font-medium text-gray-300">{referee!.licenseNumber}</p>
                     </div>
                   </div>
                 </Card>
@@ -241,18 +241,18 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
         {gameSpons.length > 0 && (
           <div>
-            <h2 className="text-xl font-bold mb-4">Sponsors</h2>
+            <h2 className="text-xl font-bold mb-6 text-white">Sponsors</h2>
             <div className="flex flex-col gap-2">
               {gameSpons.map(sponsor => (
                 <Card key={sponsor!.id}>
                   <div className="flex justify-between">
                     <div>
-                      <p className="font-bold">{sponsor!.name}</p>
-                      <p className="text-sm text-gray-600">{sponsor!.email}</p>
+                      <p className="font-bold text-white">{sponsor!.name}</p>
+                      <p className="text-sm text-gray-400">{sponsor!.email}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-600">Class</p>
-                      <p className="text-sm font-medium uppercase">{sponsor!.class}</p>
+                      <p className="text-sm font-medium uppercase text-gray-300">{sponsor!.class}</p>
                     </div>
                   </div>
                 </Card>

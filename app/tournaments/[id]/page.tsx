@@ -182,12 +182,12 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-900">
       <Navigation />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">{tournament.name}</h1>
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-white">{tournament.name}</h1>
           {canManage && !isEditing && (
             <div className="flex gap-2">
               <Button onClick={handleEdit}>Edit</Button>
@@ -202,7 +202,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
           </div>
         )}
 
-        <div className="border border-black p-6 mb-6">
+        <div className="border border-gray-700 bg-gray-800 rounded-2xl shadow-2xl p-10 mb-6">
           {isEditing ? (
             <form onSubmit={handleSave} className="flex flex-col gap-4">
               <Input
@@ -213,12 +213,12 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
               />
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium">Description</label>
+                <label className="text-sm font-medium text-white">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   required
-                  className="px-3 py-2 border border-black bg-white"
+                  className="px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-500 transition-colors"
                   rows={4}
                 />
               </div>
@@ -289,36 +289,36 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
             <div className="flex flex-col gap-4">
               <div>
                 <p className="text-sm text-gray-600">Description</p>
-                <p>{tournament.description}</p>
+                <p className="text-gray-300">{tournament.description}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Type of Sport</p>
-                  <p>{tournament.typeOfSport}</p>
+                  <p className="text-gray-300">{tournament.typeOfSport}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Format</p>
-                  <p className="capitalize">{tournament.format}</p>
+                  <p className="capitalize text-gray-300">{tournament.format}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Start Date</p>
-                  <p>{tournament.start}</p>
+                  <p className="text-gray-300">{tournament.start}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">End Date</p>
-                  <p>{tournament.end}</p>
+                  <p className="text-gray-300">{tournament.end}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Participants</p>
-                  <p>{tournament.minParticipants} - {tournament.maxParticipants}</p>
+                  <p className="text-gray-300">{tournament.minParticipants} - {tournament.maxParticipants}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Current Participants</p>
-                  <p>{participants.length}</p>
+                  <p className="text-gray-300">{participants.length}</p>
                 </div>
               </div>
             </div>
@@ -335,8 +335,8 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         </div>
 
         {isJoining && (
-          <form onSubmit={handleJoin} className="border border-black p-6 mb-6">
-            <h3 className="font-bold mb-4">Join Tournament</h3>
+          <form onSubmit={handleJoin} className="border border-gray-700 bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
+            <h3 className="font-bold mb-4 text-white">Join Tournament</h3>
             <div className="flex flex-col gap-4">
               <Select
                 label="Join as"
@@ -368,16 +368,16 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         )}
 
         <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Games</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-white">Games</h2>
             {canManage && !isAddingGame && (
               <Button onClick={() => setIsAddingGame(true)}>Add Game</Button>
             )}
           </div>
 
           {isAddingGame && (
-            <form onSubmit={handleAddGame} className="border border-black p-4 mb-4">
-              <h3 className="font-bold mb-4">Add New Game</h3>
+            <form onSubmit={handleAddGame} className="border border-gray-700 bg-gray-800 rounded-xl shadow-lg p-6 mb-4">
+              <h3 className="font-bold mb-4 text-white">Add New Game</h3>
               <div className="flex flex-col gap-4">
                 <Input
                   label="Game Name"
@@ -431,19 +431,19 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
           )}
 
           {tournamentGames.length === 0 ? (
-            <p className="text-gray-600">No games scheduled yet.</p>
+            <p className="text-gray-400">No games scheduled yet.</p>
           ) : (
             <div className="flex flex-col gap-4">
               {tournamentGames.map(game => (
                 <Card key={game.id} onClick={() => router.push(`/games/${game.id}`)}>
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-bold">{game.name}</h3>
-                      <p className="text-sm text-gray-600">
+                      <h3 className="font-bold text-white">{game.name}</h3>
+                      <p className="text-sm text-gray-400">
                         {new Date(game.start).toLocaleString()}
                       </p>
                     </div>
-                    <div className="text-right text-sm">
+                    <div className="text-right text-sm text-gray-400">
                       <p>Winner: {game.winnerPts} pts</p>
                       <p>Loser: {game.loserPts} pts</p>
                     </div>
@@ -455,22 +455,22 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         </div>
 
         <div>
-          <h2 className="text-xl font-bold mb-4">Participants ({participants.length})</h2>
+          <h2 className="text-xl font-bold mb-6 text-white">Participants ({participants.length})</h2>
           {participants.length === 0 ? (
-            <p className="text-gray-600">No participants yet.</p>
+            <p className="text-gray-400">No participants yet.</p>
           ) : (
             <div className="flex flex-col gap-2">
               {participants.map(participant => (
                 <Card key={participant.id}>
                   <div className="flex justify-between">
                     <div>
-                      <p className="font-bold">
+                      <p className="font-bold text-white">
                         {participant.participantType} - ID: {participant.participantId}
                       </p>
-                      <p className="text-sm text-gray-600">Points: {participant.points}</p>
+                      <p className="text-sm text-gray-400">Points: {participant.points}</p>
                     </div>
                     {participant.position > 0 && (
-                      <p className="text-sm font-medium">Position: {participant.position}</p>
+                      <p className="text-sm font-medium text-gray-300">Position: {participant.position}</p>
                     )}
                   </div>
                 </Card>

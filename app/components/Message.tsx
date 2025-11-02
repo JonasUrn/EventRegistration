@@ -5,12 +5,12 @@ type MessageProps = {
 
 const Message = ({ type, children }: MessageProps) => {
   const styles = {
-    success: 'bg-green-50 text-green-800 border-green-800',
-    error: 'bg-red-50 text-red-800 border-red-800',
+    success: 'bg-green-950 text-green-300 border-green-800',
+    error: 'bg-red-950 text-red-300 border-red-800',
   };
 
   return (
-    <div className={`border px-4 py-3 ${styles[type]}`}>
+    <div className={`border px-5 py-4 rounded-lg shadow-md ${styles[type]}`}>
       {children}
     </div>
   );
