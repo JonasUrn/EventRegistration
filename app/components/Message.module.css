@@ -1,0 +1,19 @@
+.message {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid;
+  font-size: 0.9375rem;
+}
+
+.success {
+  background: var(--color-success-light);
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.error {
+  background: var(--color-error-light);
+  color: #991b1b;
+  border-color: #fecaca;
+}

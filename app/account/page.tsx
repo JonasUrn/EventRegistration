@@ -9,6 +9,8 @@ import Button from '../components/Button';
 import Message from '../components/Message';
 import Card from '../components/Card';
 import { getCurrentUser, setCurrentUser, users, teamMemberships, teams } from '../data';
+import layoutStyles from '../layout.module.css';
+import styles from './account.module.css';
 
 const AccountPage = () => {
   const router = useRouter();
@@ -16,6 +18,9 @@ const AccountPage = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationMessage, setVerificationMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     surname: '',
@@ -100,33 +105,67 @@ const AccountPage = () => {
     setMessage(null);
   };
 
+  const handleVerifyEmail = () => {
+    setShowVerificationModal(true);
+    setVerificationCode('');
+    setVerificationMessage(null);
+  };
+
+  const handleVerificationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (verificationCode === '676767') {
+      const userIndex = users.findIndex(u => u.id === currentUser.id);
+      if (userIndex !== -1) {
+        users[userIndex].emailWasVerified = true;
+        setCurrentUser(users[userIndex]);
+      }
+      setVerificationMessage({ type: 'success', text: 'Email verified successfully!' });
+      setTimeout(() => {
+        setShowVerificationModal(false);
+        setMessage({ type: 'success', text: 'Email verified successfully!' });
+      }, 1500);
+    } else {
+      setVerificationMessage({ type: 'error', text: 'Invalid verification code. Please try again.' });
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowVerificationModal(false);
+    setVerificationCode('');
+    setVerificationMessage(null);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className={layoutStyles.pageContainer}>
       <Navigation />
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold mb-8 text-white">My Account</h1>
+      <div className={layoutStyles.pageContentNarrow}>
+        <h1 className={layoutStyles.pageTitle}>My Account</h1>
 
         {message && (
-          <div className="mb-4">
+          <div className={layoutStyles.messageWrapper}>
             <Message type={message.type}>{message.text}</Message>
           </div>
         )}
 
-        <div className="border border-gray-700 bg-gray-800 rounded-2xl shadow-2xl p-10 mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-white">Profile Information</h2>
+        <div className={styles.profileCard}>
+          <div className={styles.profileHeader}>
+            <h2 className={styles.profileTitle}>Profile Information</h2>
             {!isEditing && (
-              <div className="flex gap-2">
-                <Button onClick={handleEdit}>Edit</Button>
+              <div className={styles.profileActions}>
+                {!currentUser.emailWasVerified && (
+                  <Button onClick={handleVerifyEmail}>Verify Email</Button>
+                )}
+                <Button variant="secondary" onClick={handleEdit}>Edit</Button>
                 <Button variant="danger" onClick={handleDelete}>Delete Account</Button>
               </div>
             )}
           </div>
 
           {isEditing ? (
-            <form onSubmit={handleSave} className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSave} className={styles.profileForm}>
+              <div className={styles.profileGrid}>
                 <Input
                   label="Name"
                   value={formData.name}
@@ -156,7 +195,7 @@ const AccountPage = () => {
                 required
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className={styles.profileGrid}>
                 <Input
                   label="Birth Date"
                   type="date"
@@ -176,7 +215,7 @@ const AccountPage = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className={styles.profileGrid}>
                 <Input
                   label="Country"
                   value={formData.country}
@@ -191,44 +230,47 @@ const AccountPage = () => {
                 />
               </div>
 
-              <div className="flex gap-2 mt-4">
+              <div className={styles.profileFormActions}>
                 <Button type="submit">Save Changes</Button>
                 <Button variant="secondary" onClick={handleCancel}>Cancel</Button>
               </div>
             </form>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Name</p>
-                <p className="font-medium text-gray-300">{currentUser.name} {currentUser.surname}</p>
+            <div className={styles.infoGrid}>
+              <div className={styles.infoField}>
+                <p className={styles.infoLabel}>Name</p>
+                <p className={styles.infoValue}>{currentUser.name} {currentUser.surname}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Username</p>
-                <p className="font-medium text-gray-300">{currentUser.username}</p>
+              <div className={styles.infoField}>
+                <p className={styles.infoLabel}>Username</p>
+                <p className={styles.infoValue}>{currentUser.username}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium text-gray-300">{currentUser.email}</p>
+              <div className={styles.infoField}>
+                <p className={styles.infoLabel}>Email</p>
+                <p className={styles.infoValue}>
+                  {currentUser.email}
+                  {currentUser.emailWasVerified && <span style={{ color: 'var(--color-success)', marginLeft: '0.5rem' }}>✓ Verified</span>}
+                </p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Phone</p>
-                <p className="font-medium text-gray-300">{currentUser.phoneNo}</p>
+              <div className={styles.infoField}>
+                <p className={styles.infoLabel}>Phone</p>
+                <p className={styles.infoValue}>{currentUser.phoneNo}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Birth Date</p>
-                <p className="font-medium text-gray-300">{currentUser.birthDate}</p>
+              <div className={styles.infoField}>
+                <p className={styles.infoLabel}>Birth Date</p>
+                <p className={styles.infoValue}>{currentUser.birthDate}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Sex</p>
-                <p className="font-medium text-gray-300">{currentUser.sex}</p>
+              <div className={styles.infoField}>
+                <p className={styles.infoLabel}>Sex</p>
+                <p className={styles.infoValue}>{currentUser.sex}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Location</p>
-                <p className="font-medium text-gray-300">{currentUser.city}, {currentUser.country}</p>
+              <div className={styles.infoField}>
+                <p className={styles.infoLabel}>Location</p>
+                <p className={styles.infoValue}>{currentUser.city}, {currentUser.country}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Role</p>
-                <p className="font-medium text-gray-300">
+              <div className={styles.infoField}>
+                <p className={styles.infoLabel}>Role</p>
+                <p className={styles.infoValue}>
                   {currentUser.isAdministrator ? 'Administrator' : currentUser.isOrganizer ? 'Organizer' : 'User'}
                 </p>
               </div>
@@ -236,20 +278,20 @@ const AccountPage = () => {
           )}
         </div>
 
-        <div>
-          <h2 className="text-xl font-bold mb-6 text-white">My Teams</h2>
+        <div className={styles.teamsSection}>
+          <h2 className={styles.teamsTitle}>My Teams</h2>
           {userTeams.length === 0 ? (
-            <p className="text-gray-400">You are not part of any teams yet.</p>
+            <p className={styles.emptyMessage}>You are not part of any teams yet.</p>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className={styles.teamsList}>
               {userTeams.map(({ membership, team }) => (
                 <Card key={membership.id} onClick={() => router.push(`/teams/${team!.id}`)}>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-bold text-white">{team!.name}</h3>
-                      <p className="text-sm text-gray-400">{membership.role} since {membership.memberSince}</p>
+                  <div className={styles.teamCard}>
+                    <div className={styles.teamInfo}>
+                      <h3>{team!.name}</h3>
+                      <p>{membership.role} since {membership.memberSince}</p>
                     </div>
-                    <p className="text-sm text-gray-400">{team!.city}, {team!.country}</p>
+                    <p className={styles.teamLocation}>{team!.city}, {team!.country}</p>
                   </div>
                 </Card>
               ))}
@@ -257,6 +299,51 @@ const AccountPage = () => {
           )}
         </div>
       </div>
+
+      {/* Email Verification Modal */}
+      {showVerificationModal && (
+        <div className={styles.modalOverlay} onClick={handleCloseModal}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Verify Email</h2>
+              <p className={styles.modalDescription}>
+                Please enter the 6-digit verification code sent to your email address.
+              </p>
+            </div>
+
+            {verificationMessage && (
+              <div className={layoutStyles.messageWrapper}>
+                <Message type={verificationMessage.type}>{verificationMessage.text}</Message>
+              </div>
+            )}
+
+            <form onSubmit={handleVerificationSubmit}>
+              <div className={styles.modalBody}>
+                <input
+                  type="text"
+                  className={styles.codeInput}
+                  placeholder="000000"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  maxLength={6}
+                  pattern="[0-9]{6}"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className={styles.modalFooter}>
+                <Button variant="secondary" onClick={handleCloseModal}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Verify
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -6,6 +6,7 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 import Message from '../components/Message';
 import { users, setCurrentUser } from '../data';
+import styles from '../layout.module.css';
 
 const LoginPage = () => {
   const router = useRouter();
@@ -28,17 +29,17 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-      <div className="w-full max-w-md p-10 bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl">
-        <h1 className="text-3xl font-bold mb-8 text-white text-center">Login</h1>
+    <div className={styles.authContainer}>
+      <div className={styles.authCard}>
+        <h1 className={styles.authTitle}>Login</h1>
 
         {message && (
-          <div className="mb-6">
+          <div className={styles.messageWrapper}>
             <Message type={message.type}>{message.text}</Message>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className={styles.authForm}>
           <Input
             label="Username"
             value={username}
@@ -54,7 +55,7 @@ const LoginPage = () => {
             required
           />
 
-          <div className="flex gap-3 mt-6">
+          <div className={styles.buttonGroup}>
             <Button type="submit">Login</Button>
             <Button variant="secondary" onClick={() => router.push('/register')}>
               Register
