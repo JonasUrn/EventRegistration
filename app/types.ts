@@ -73,6 +73,7 @@ export type Game = {
   winnerPts: number;
   loserPts: number;
   creatorId: string;
+  isAdded: boolean;
 };
 
 export type Referee = {

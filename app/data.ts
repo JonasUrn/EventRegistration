@@ -158,6 +158,7 @@ export let games: Game[] = [
     winnerPts: 3,
     loserPts: 0,
     creatorId: '1',
+    isAdded: true,
   },
   {
     id: '2',
@@ -168,6 +169,7 @@ export let games: Game[] = [
     winnerPts: 3,
     loserPts: 0,
     creatorId: '1',
+    isAdded: true,
   },
   {
     id: '3',
@@ -178,6 +180,7 @@ export let games: Game[] = [
     winnerPts: 2,
     loserPts: 1,
     creatorId: '4',
+    isAdded: true,
   },
 ];
 

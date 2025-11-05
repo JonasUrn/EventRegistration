@@ -8,7 +8,8 @@ import Select from '../../components/Select';
 import Button from '../../components/Button';
 import Message from '../../components/Message';
 import Card from '../../components/Card';
-import { getCurrentUser, tournaments, games, registrations, tournamentParticipants, teams } from '../../data';
+import { getCurrentUser, tournaments, games, registrations, tournamentParticipants, teams, gameParticipants, users } from '../../data';
+import layoutStyles from '../../layout.module.css';
 
 const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const resolvedParams = use(params);
@@ -17,6 +18,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
 
   const [tournament, setTournament] = useState(tournaments.find(t => t.id === resolvedParams.id));
   const [isEditing, setIsEditing] = useState(false);
+  const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [isAddingGame, setIsAddingGame] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -36,7 +38,10 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
     end: '',
     winnerPts: 3,
     loserPts: 0,
+    participant1Id: '',
+    participant2Id: '',
   });
+  const [selectedGameId, setSelectedGameId] = useState('');
   const [joinFormData, setJoinFormData] = useState({
     participantType: 'User' as 'User' | 'Team',
     teamId: '',
@@ -69,9 +74,14 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
     return null;
   }
 
-  const canManage = currentUser.isOrganizer || currentUser.isAdministrator || tournament.creatorId === currentUser.id;
+  // Only the creator can edit/delete tournaments
+  const canManage = tournament.creatorId === currentUser.id;
 
-  const tournamentGames = games.filter(g => g.tournamentId === tournament.id);
+  // Get only added games for display
+  const tournamentGames = games.filter(g => g.tournamentId === tournament.id && g.isAdded);
+
+  // Get unadded games for the add game dropdown
+  const unaddedGames = games.filter(g => g.tournamentId === tournament.id && !g.isAdded);
 
   const participants = tournamentParticipants.filter(tp => tp.tournamentId === tournament.id);
 
@@ -104,26 +114,72 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
     }
   };
 
-  const handleAddGame = (e: React.FormEvent) => {
+  const handleCreateGame = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate that 2 participants are selected
+    if (!gameFormData.participant1Id || !gameFormData.participant2Id) {
+      setMessage({ type: 'error', text: 'Please select 2 participants for the game' });
+      return;
+    }
+
+    if (gameFormData.participant1Id === gameFormData.participant2Id) {
+      setMessage({ type: 'error', text: 'Please select 2 different participants' });
+      return;
+    }
+
+    const newGameId = String(games.length + 1);
+
     const newGame = {
-      id: String(games.length + 1),
+      id: newGameId,
       tournamentId: tournament.id,
-      ...gameFormData,
+      name: gameFormData.name,
+      start: gameFormData.start,
+      end: gameFormData.end,
+      winnerPts: gameFormData.winnerPts,
+      loserPts: gameFormData.loserPts,
       creatorId: currentUser.id,
+      isAdded: false, // Created but not added yet
     };
 
     games.push(newGame);
-    setMessage({ type: 'success', text: 'Game added successfully!' });
+
+    // Add participants to the game
+    gameParticipants.push({
+      id: String(gameParticipants.length + 1),
+      gameId: newGameId,
+      participantId: gameFormData.participant1Id,
+    });
+
+    gameParticipants.push({
+      id: String(gameParticipants.length + 1),
+      gameId: newGameId,
+      participantId: gameFormData.participant2Id,
+    });
+
+    setMessage({ type: 'success', text: 'Game created successfully with 2 participants! Use "Add Game" to add it to the tournament.' });
     setGameFormData({
       name: '',
       start: '',
       end: '',
       winnerPts: 3,
       loserPts: 0,
+      participant1Id: '',
+      participant2Id: '',
     });
-    setIsAddingGame(false);
+    setIsCreatingGame(false);
+  };
+
+  const handleAddGameToTournament = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const gameIndex = games.findIndex(g => g.id === selectedGameId);
+    if (gameIndex !== -1) {
+      games[gameIndex].isAdded = true;
+      setMessage({ type: 'success', text: 'Game added to tournament successfully!' });
+      setSelectedGameId('');
+      setIsAddingGame(false);
+    }
   };
 
   const handleJoin = (e: React.FormEvent) => {
@@ -182,29 +238,29 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
   };
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className={layoutStyles.pageContainer}>
       <Navigation />
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-white">{tournament.name}</h1>
+      <div className={layoutStyles.pageContentNarrow}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h1 className={layoutStyles.pageTitle} style={{ marginBottom: 0 }}>{tournament.name}</h1>
           {canManage && !isEditing && (
-            <div className="flex gap-2">
-              <Button onClick={handleEdit}>Edit</Button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Button variant="secondary" onClick={handleEdit}>Edit</Button>
               <Button variant="danger" onClick={handleDelete}>Delete</Button>
             </div>
           )}
         </div>
 
         {message && (
-          <div className="mb-4">
+          <div className={layoutStyles.messageWrapper}>
             <Message type={message.type}>{message.text}</Message>
           </div>
         )}
 
-        <div className="border border-gray-700 bg-gray-800 rounded-2xl shadow-2xl p-10 mb-6">
+        <Card>
           {isEditing ? (
-            <form onSubmit={handleSave} className="flex flex-col gap-4">
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <Input
                 label="Tournament Name"
                 value={formData.name}
@@ -212,13 +268,23 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                 required
               />
 
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-white">Description</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   required
-                  className="px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-500 transition-colors"
+                  style={{
+                    padding: '0.75rem 1rem',
+                    background: 'var(--bg-primary)',
+                    border: '1px solid var(--border-medium)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9375rem',
+                    transition: 'all var(--transition-fast)',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
                   rows={4}
                 />
               </div>
@@ -230,7 +296,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                 required
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                 <Input
                   label="Start Date"
                   type="date"
@@ -248,7 +314,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                 <Input
                   label="Min Participants"
                   type="number"
@@ -278,7 +344,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                 required
               />
 
-              <div className="flex gap-2 mt-4">
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                 <Button type="submit">Save Changes</Button>
                 <Button variant="secondary" onClick={() => { setIsEditing(false); setMessage(null); }}>
                   Cancel
@@ -286,58 +352,59 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
               </div>
             </form>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <p className="text-sm text-gray-600">Description</p>
-                <p className="text-gray-300">{tournament.description}</p>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Description</p>
+                <p style={{ color: 'var(--text-primary)' }}>{tournament.description}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                 <div>
-                  <p className="text-sm text-gray-600">Type of Sport</p>
-                  <p className="text-gray-300">{tournament.typeOfSport}</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Type of Sport</p>
+                  <p style={{ color: 'var(--text-primary)' }}>{tournament.typeOfSport}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Format</p>
-                  <p className="capitalize text-gray-300">{tournament.format}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Start Date</p>
-                  <p className="text-gray-300">{tournament.start}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">End Date</p>
-                  <p className="text-gray-300">{tournament.end}</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Format</p>
+                  <p style={{ textTransform: 'capitalize', color: 'var(--text-primary)' }}>{tournament.format}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                 <div>
-                  <p className="text-sm text-gray-600">Participants</p>
-                  <p className="text-gray-300">{tournament.minParticipants} - {tournament.maxParticipants}</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Start Date</p>
+                  <p style={{ color: 'var(--text-primary)' }}>{tournament.start}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Current Participants</p>
-                  <p className="text-gray-300">{participants.length}</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>End Date</p>
+                  <p style={{ color: 'var(--text-primary)' }}>{tournament.end}</p>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Participants</p>
+                  <p style={{ color: 'var(--text-primary)' }}>{tournament.minParticipants} - {tournament.maxParticipants}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Current Participants</p>
+                  <p style={{ color: 'var(--text-primary)' }}>{participants.length}</p>
                 </div>
               </div>
             </div>
           )}
-        </div>
+        </Card>
 
-        <div className="flex gap-2 mb-6">
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
           {!isJoining && (
             <Button onClick={() => setIsJoining(true)}>Join Tournament</Button>
           )}
           {canManage && (
-            <Button onClick={handleGenerateReport}>Generate Report</Button>
+            <Button variant="secondary" onClick={handleGenerateReport}>Generate Report</Button>
           )}
         </div>
 
         {isJoining && (
-          <form onSubmit={handleJoin} className="border border-gray-700 bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
-            <h3 className="font-bold mb-4 text-white">Join Tournament</h3>
-            <div className="flex flex-col gap-4">
+          <Card>
+            <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Join Tournament</h3>
+
               <Select
                 label="Join as"
                 value={joinFormData.participantType}
@@ -359,26 +426,32 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                 />
               )}
 
-              <div className="flex gap-2">
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <Button type="submit">Join</Button>
                 <Button variant="secondary" onClick={() => setIsJoining(false)}>Cancel</Button>
               </div>
-            </div>
-          </form>
+            </form>
+          </Card>
         )}
 
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-white">Games</h2>
-            {canManage && !isAddingGame && (
-              <Button onClick={() => setIsAddingGame(true)}>Add Game</Button>
+        <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Games</h2>
+            {canManage && (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {!isCreatingGame && <Button onClick={() => setIsCreatingGame(true)}>Create Game</Button>}
+                {!isAddingGame && unaddedGames.length > 0 && (
+                  <Button variant="secondary" onClick={() => setIsAddingGame(true)}>Add Game</Button>
+                )}
+              </div>
             )}
           </div>
 
-          {isAddingGame && (
-            <form onSubmit={handleAddGame} className="border border-gray-700 bg-gray-800 rounded-xl shadow-lg p-6 mb-4">
-              <h3 className="font-bold mb-4 text-white">Add New Game</h3>
-              <div className="flex flex-col gap-4">
+          {isCreatingGame && (
+            <Card>
+              <form onSubmit={handleCreateGame} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Create New Game</h3>
+
                 <Input
                   label="Game Name"
                   value={gameFormData.name}
@@ -386,7 +459,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                   required
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                   <Input
                     label="Start Date & Time"
                     type="datetime-local"
@@ -404,7 +477,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                   <Input
                     label="Winner Points"
                     type="number"
@@ -422,28 +495,117 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                   />
                 </div>
 
-                <div className="flex gap-2">
-                  <Button type="submit">Add Game</Button>
-                  <Button variant="secondary" onClick={() => setIsAddingGame(false)}>Cancel</Button>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                  <Select
+                    label="Participant 1"
+                    value={gameFormData.participant1Id}
+                    onChange={(val) => setGameFormData({ ...gameFormData, participant1Id: val })}
+                    options={participants.map(p => {
+                      let participantName = '';
+                      if (p.participantType === 'Team') {
+                        const team = teams.find(t => t.id === p.participantId);
+                        participantName = team ? team.name : `Team ${p.participantId}`;
+                      } else {
+                        const user = users.find(u => u.id === p.participantId);
+                        participantName = user ? `${user.name} ${user.surname}` : `User ${p.participantId}`;
+                      }
+                      return {
+                        value: p.participantId,
+                        label: `${participantName} (${p.participantType})`
+                      };
+                    })}
+                    required
+                  />
+
+                  <Select
+                    label="Participant 2"
+                    value={gameFormData.participant2Id}
+                    onChange={(val) => setGameFormData({ ...gameFormData, participant2Id: val })}
+                    options={participants.map(p => {
+                      let participantName = '';
+                      if (p.participantType === 'Team') {
+                        const team = teams.find(t => t.id === p.participantId);
+                        participantName = team ? team.name : `Team ${p.participantId}`;
+                      } else {
+                        const user = users.find(u => u.id === p.participantId);
+                        participantName = user ? `${user.name} ${user.surname}` : `User ${p.participantId}`;
+                      }
+                      return {
+                        value: p.participantId,
+                        label: `${participantName} (${p.participantType})`
+                      };
+                    })}
+                    required
+                  />
                 </div>
-              </div>
-            </form>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <Button type="submit">Create Game</Button>
+                  <Button variant="secondary" onClick={() => setIsCreatingGame(false)}>Cancel</Button>
+                </div>
+              </form>
+            </Card>
+          )}
+
+          {isAddingGame && (
+            <Card>
+              <form onSubmit={handleAddGameToTournament} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Add Game to Tournament</h3>
+
+                <Select
+                  label="Select Game"
+                  value={selectedGameId}
+                  onChange={(val) => setSelectedGameId(val)}
+                  options={unaddedGames.map(g => ({
+                    value: g.id,
+                    label: `${g.name} - ${new Date(g.start).toLocaleDateString()}`
+                  }))}
+                  required
+                />
+
+                {selectedGameId && (
+                  <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+                    {(() => {
+                      const game = unaddedGames.find(g => g.id === selectedGameId);
+                      return game ? (
+                        <>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                            Start: {new Date(game.start).toLocaleString()}
+                          </p>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                            End: {new Date(game.end).toLocaleString()}
+                          </p>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                            Points: Winner {game.winnerPts}, Loser {game.loserPts}
+                          </p>
+                        </>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <Button type="submit">Add to Tournament</Button>
+                  <Button variant="secondary" onClick={() => { setIsAddingGame(false); setSelectedGameId(''); }}>Cancel</Button>
+                </div>
+              </form>
+            </Card>
           )}
 
           {tournamentGames.length === 0 ? (
-            <p className="text-gray-400">No games scheduled yet.</p>
+            <p style={{ color: 'var(--text-secondary)' }}>No games added yet.</p>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {tournamentGames.map(game => (
                 <Card key={game.id} onClick={() => router.push(`/games/${game.id}`)}>
-                  <div className="flex justify-between items-start">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                     <div>
-                      <h3 className="font-bold text-white">{game.name}</h3>
-                      <p className="text-sm text-gray-400">
+                      <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{game.name}</h3>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                         {new Date(game.start).toLocaleString()}
                       </p>
                     </div>
-                    <div className="text-right text-sm text-gray-400">
+                    <div style={{ textAlign: 'right', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                       <p>Winner: {game.winnerPts} pts</p>
                       <p>Loser: {game.loserPts} pts</p>
                     </div>
@@ -455,22 +617,24 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         </div>
 
         <div>
-          <h2 className="text-xl font-bold mb-6 text-white">Participants ({participants.length})</h2>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>
+            Participants ({participants.length})
+          </h2>
           {participants.length === 0 ? (
-            <p className="text-gray-400">No participants yet.</p>
+            <p style={{ color: 'var(--text-secondary)' }}>No participants yet.</p>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {participants.map(participant => (
                 <Card key={participant.id}>
-                  <div className="flex justify-between">
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div>
-                      <p className="font-bold text-white">
+                      <p style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
                         {participant.participantType} - ID: {participant.participantId}
                       </p>
-                      <p className="text-sm text-gray-400">Points: {participant.points}</p>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Points: {participant.points}</p>
                     </div>
                     {participant.position > 0 && (
-                      <p className="text-sm font-medium text-gray-300">Position: {participant.position}</p>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Position: {participant.position}</p>
                     )}
                   </div>
                 </Card>
