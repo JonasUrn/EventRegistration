@@ -16,6 +16,7 @@ import styles from './account.module.css';
 const AccountPage = () => {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [captainTeams, setCaptainTeams] = useState<any[]>([]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -55,6 +56,28 @@ const AccountPage = () => {
           country: userData.salis,
           city: userData.miestas,
         });
+
+        // Fetch teams where user is captain
+        const allTeams = await api.teams.getAll();
+        const teamsWithCaptainRole = [];
+
+        for (const team of allTeams) {
+          try {
+            const members = await api.teams.getMembers(team.id_Komanda);
+            const isCaptain = members.some(
+              (member: any) =>
+                member.fk_Klientasid_Klientas === userData.id_Klientas &&
+                member.role === 'Captain'
+            );
+            if (isCaptain) {
+              teamsWithCaptainRole.push(team);
+            }
+          } catch (error) {
+            console.error(`Failed to fetch members for team ${team.id_Komanda}:`, error);
+          }
+        }
+
+        setCaptainTeams(teamsWithCaptainRole);
       } catch (error) {
         console.error('Failed to fetch user:', error);
         authStorage.logout();
@@ -316,6 +339,31 @@ const AccountPage = () => {
                   {currentUser.administratorius ? 'Administrator' : currentUser.organizatorius ? 'Organizer' : 'User'}
                 </p>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Teams Section */}
+        <div className={styles.profileCard}>
+          <h2 className={styles.profileTitle}>My Teams (Captain)</h2>
+          {captainTeams.length === 0 ? (
+            <p className={styles.noTeams}>You are not a captain of any teams.</p>
+          ) : (
+            <div className={styles.teamsGrid}>
+              {captainTeams.map((team) => (
+                <Card
+                  key={team.id_Komanda}
+                  onClick={() => router.push(`/teams/${team.id_Komanda}`)}
+                >
+                  <h3 className={styles.teamName}>{team.pavadinimas}</h3>
+                  <p className={styles.teamLocation}>
+                    {team.miestas}, {team.salis}
+                  </p>
+                  {team.aprasymas && (
+                    <p className={styles.teamDescription}>{team.aprasymas}</p>
+                  )}
+                </Card>
+              ))}
             </div>
           )}
         </div>

@@ -91,6 +91,8 @@ class AuthController:
                 "slapyvardis": client.slapyvardis,
                 "el_pastas": client.el_pastas,
                 "vardas": client.vardas,
-                "pavarde": client.pavarde
+                "pavarde": client.pavarde,
+                "organizatorius": client.organizatorius,
+                "administratorius": client.administratorius
             }
         }
