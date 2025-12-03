@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import Message from '../components/Message';
-import { users, setCurrentUser } from '../data';
+import { api } from '../lib/api';
 import styles from '../layout.module.css';
 
 const LoginPage = () => {
@@ -13,18 +13,24 @@ const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
 
-    const user = users.find(u => u.username === username && u.password === password);
-
-    if (user) {
-      setCurrentUser(user);
+    try {
+      await api.auth.login(username, password);
       setMessage({ type: 'success', text: 'Login successful!' });
       setTimeout(() => router.push('/'), 1000);
-    } else {
-      setMessage({ type: 'error', text: 'Invalid username or password' });
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.message || 'Invalid username or password'
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -56,7 +62,9 @@ const LoginPage = () => {
           />
 
           <div className={styles.buttonGroup}>
-            <Button type="submit">Login</Button>
+            <Button type="submit">
+              {isLoading ? 'Logging in...' : 'Login'}
+            </Button>
             <Button variant="secondary" onClick={() => router.push('/register')}>
               Register
             </Button>

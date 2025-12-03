@@ -6,12 +6,11 @@ import Navigation from '../../components/Navigation';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import Message from '../../components/Message';
-import { getCurrentUser, teams, teamMemberships } from '../../data';
+import { authStorage } from '../../lib/auth';
+import { api } from '../../lib/api';
 
 const CreateTeamPage = () => {
   const router = useRouter();
-  const currentUser = getCurrentUser();
-
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -19,53 +18,67 @@ const CreateTeamPage = () => {
     city: '',
   });
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!authStorage.isAuthenticated()) {
       router.push('/login');
     }
-  }, [currentUser, router]);
+  }, [router]);
 
-  if (!currentUser) {
+  if (!authStorage.isAuthenticated()) {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
 
-    const existingTeam = teams.find(t => t.name === formData.name);
+    try {
+      const currentUser = authStorage.getCurrentUser();
 
-    if (existingTeam) {
-      setMessage({ type: 'error', text: 'Team name already exists' });
-      return;
+      if (!currentUser || !currentUser.id) {
+        throw new Error('Please log in again to create a team');
+      }
+
+      const newTeam = await api.teams.create({
+        pavadinimas: formData.name,
+        aprasymas: formData.description,
+        salis: formData.country,
+        miestas: formData.city,
+        fk_Klientasid_Klientas: currentUser.id,
+      });
+
+      await api.teams.addMember({
+        fk_Komandaid_Komanda: newTeam.id_Komanda,
+        fk_Klientasid_Klientas: currentUser.id,
+        role: 'Captain',
+      });
+
+      setMessage({ type: 'success', text: 'Team created successfully!' });
+      setTimeout(() => router.push(`/teams/${newTeam.id_Komanda}`), 1500);
+    } catch (error: any) {
+      console.error('Team creation error:', error);
+      let errorMessage = 'Failed to create team';
+
+      if (typeof error.message === 'string') {
+        errorMessage = error.message;
+      } else if (error.detail) {
+        if (typeof error.detail === 'string') {
+          errorMessage = error.detail;
+        } else if (Array.isArray(error.detail)) {
+          errorMessage = error.detail.map((e: any) => e.msg).join(', ');
+        }
+      }
+
+      setMessage({
+        type: 'error',
+        text: errorMessage
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    const newTeamId = String(teams.length + 1);
-    const newTeam = {
-      id: newTeamId,
-      name: formData.name,
-      logoLink: '/logos/default.png',
-      created: new Date().toISOString().split('T')[0],
-      description: formData.description,
-      country: formData.country,
-      city: formData.city,
-      captainId: currentUser.id,
-    };
-
-    teams.push(newTeam);
-
-    const newMembership = {
-      id: String(teamMemberships.length + 1),
-      userId: currentUser.id,
-      teamId: newTeamId,
-      role: 'Captain',
-      memberSince: new Date().toISOString().split('T')[0],
-    };
-
-    teamMemberships.push(newMembership);
-
-    setMessage({ type: 'success', text: 'Team created successfully!' });
-    setTimeout(() => router.push(`/teams/${newTeamId}`), 1500);
   };
 
   return (
@@ -117,7 +130,7 @@ const CreateTeamPage = () => {
           </div>
 
           <div className="flex gap-2 mt-4">
-            <Button type="submit">Create Team</Button>
+            <Button type="submit">{isLoading ? 'Creating...' : 'Create Team'}</Button>
             <Button variant="secondary" onClick={() => router.push('/teams')}>Cancel</Button>
           </div>
         </form>

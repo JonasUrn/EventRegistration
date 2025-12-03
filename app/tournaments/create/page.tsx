@@ -7,11 +7,13 @@ import Input from '../../components/Input';
 import Select from '../../components/Select';
 import Button from '../../components/Button';
 import Message from '../../components/Message';
-import { getCurrentUser, tournaments } from '../../data';
+import { authStorage } from '../../lib/auth';
+import { api, ApiError } from '../../lib/api';
 
 const CreateTournamentPage = () => {
   const router = useRouter();
-  const currentUser = getCurrentUser();
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -26,38 +28,84 @@ const CreateTournamentPage = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    if (!currentUser) {
-      router.push('/login');
-      return;
-    }
+    const fetchUser = async () => {
+      if (!authStorage.isAuthenticated()) {
+        router.push('/login');
+        return;
+      }
 
-    if (!currentUser.isOrganizer && !currentUser.isAdministrator) {
-      router.push('/tournaments');
-    }
-  }, [currentUser, router]);
+      try {
+        const userData = await api.users.getCurrentUser();
+        setCurrentUser(userData);
 
-  if (!currentUser || (!currentUser.isOrganizer && !currentUser.isAdministrator)) {
+        if (!userData.organizatorius && !userData.administratorius) {
+          router.push('/tournaments');
+        }
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+        authStorage.logout();
+        router.push('/login');
+      }
+    };
+
+    fetchUser();
+  }, [router]);
+
+  if (!currentUser) {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  if (!currentUser.organizatorius && !currentUser.administratorius) {
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
 
     if (formData.minParticipants > formData.maxParticipants) {
       setMessage({ type: 'error', text: 'Minimum participants cannot exceed maximum participants' });
+      setIsLoading(false);
       return;
     }
 
-    const newTournament = {
-      id: String(tournaments.length + 1),
-      ...formData,
-      creatorId: currentUser.id,
-    };
+    try {
+      const newTournament = await api.tournaments.create({
+        pavadinimas: formData.name,
+        aprasas: formData.description,
+        sporto_saka: formData.typeOfSport,
+        pradzia: formData.start,
+        pabaiga: formData.end,
+        minimalus_nariu_skacius: formData.minParticipants,
+        maksimalus_nariu_skaicius: formData.maxParticipants,
+        turnyro_formatas: formData.format,
+        fk_Klientasid_Klientas: currentUser.id_Klientas,
+      });
 
-    tournaments.push(newTournament);
+      setMessage({ type: 'success', text: 'Tournament created successfully!' });
+      setTimeout(() => router.push(`/tournaments/${newTournament.id_Turnyras}`), 1500);
+    } catch (error: any) {
+      console.error('Tournament creation error:', error);
+      let errorMessage = 'Failed to create tournament';
 
-    setMessage({ type: 'success', text: 'Tournament created successfully!' });
-    setTimeout(() => router.push(`/tournaments/${newTournament.id}`), 1500);
+      if (typeof error.message === 'string') {
+        errorMessage = error.message;
+      } else if (error.detail) {
+        if (typeof error.detail === 'string') {
+          errorMessage = error.detail;
+        } else if (Array.isArray(error.detail)) {
+          errorMessage = error.detail.map((e: any) => e.msg).join(', ');
+        }
+      }
+
+      setMessage({
+        type: 'error',
+        text: errorMessage
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -148,7 +196,9 @@ const CreateTournamentPage = () => {
           />
 
           <div className="flex gap-2 mt-4">
-            <Button type="submit">Create Tournament</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Creating...' : 'Create Tournament'}
+            </Button>
             <Button variant="secondary" onClick={() => router.push('/tournaments')}>
               Cancel
             </Button>

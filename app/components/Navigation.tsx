@@ -2,20 +2,21 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser, setCurrentUser } from '../data';
+import { authStorage } from '../lib/auth';
+import { api } from '../lib/api';
 import Button from './Button';
 import styles from './Navigation.module.css';
 
 const Navigation = () => {
   const router = useRouter();
-  const currentUser = getCurrentUser();
+  const currentUser = authStorage.getCurrentUser();
 
   const handleLogout = () => {
-    setCurrentUser(null);
+    api.auth.logout();
     router.push('/login');
   };
 
-  if (!currentUser) {
+  if (!authStorage.isAuthenticated()) {
     return null;
   }
 

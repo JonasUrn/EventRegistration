@@ -1,30 +1,47 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navigation from '../components/Navigation';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { getCurrentUser, tournaments } from '../data';
+import { authStorage } from '../lib/auth';
+import { api } from '../lib/api';
 
 const TournamentsPage = () => {
   const router = useRouter();
-  const currentUser = getCurrentUser();
+  const [tournaments, setTournaments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!authStorage.isAuthenticated()) {
       router.push('/login');
+      return;
     }
-  }, [currentUser, router]);
 
-  if (!currentUser) {
+    const fetchTournaments = async () => {
+      try {
+        const data = await api.tournaments.getAll();
+        setTournaments(data);
+      } catch (error) {
+        console.error('Failed to fetch tournaments:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTournaments();
+  }, [router]);
+
+  if (!authStorage.isAuthenticated()) {
     return null;
   }
 
-  const canCreateTournament = currentUser.isOrganizer || currentUser.isAdministrator;
+  const currentUser = authStorage.getCurrentUser();
+  const canCreateTournament = currentUser?.organizatorius || currentUser?.administratorius;
 
   const sortedTournaments = [...tournaments].sort((a, b) =>
-    new Date(a.start).getTime() - new Date(b.start).getTime()
+    new Date(a.pradzia).getTime() - new Date(b.pradzia).getTime()
   );
 
   return (
@@ -41,29 +58,31 @@ const TournamentsPage = () => {
           )}
         </div>
 
-        {sortedTournaments.length === 0 ? (
+        {isLoading ? (
+          <p className="text-gray-400">Loading tournaments...</p>
+        ) : sortedTournaments.length === 0 ? (
           <p className="text-gray-400">No tournaments available.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {sortedTournaments.map(tournament => (
-              <Card key={tournament.id} onClick={() => router.push(`/tournaments/${tournament.id}`)}>
-                <h3 className="font-bold text-lg mb-2 text-white">{tournament.name}</h3>
-                <p className="text-sm text-gray-400 mb-2">{tournament.description}</p>
+              <Card key={tournament.id_Turnyras} onClick={() => router.push(`/tournaments/${tournament.id_Turnyras}`)}>
+                <h3 className="font-bold text-lg mb-2 text-white">{tournament.pavadinimas}</h3>
+                <p className="text-sm text-gray-400 mb-2">{tournament.aprasas}</p>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">Sport:</span>
-                  <span className="text-gray-400">{tournament.typeOfSport}</span>
+                  <span className="text-gray-400">{tournament.sporto_saka}</span>
                 </div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">Format:</span>
-                  <span className="capitalize text-gray-400">{tournament.format}</span>
+                  <span className="capitalize text-gray-400">{tournament.turnyro_formatas}</span>
                 </div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">Participants:</span>
-                  <span className="text-gray-400">{tournament.minParticipants} - {tournament.maxParticipants}</span>
+                  <span className="text-gray-400">{tournament.minimalus_nariu_skacius} - {tournament.maksimalus_nariu_skaicius}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Dates:</span>
-                  <span className="text-gray-400">{tournament.start} to {tournament.end}</span>
+                  <span className="text-gray-400">{tournament.pradzia} to {tournament.pabaiga}</span>
                 </div>
               </Card>
             ))}
