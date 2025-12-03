@@ -22,6 +22,7 @@ class AccountController:
         self.router = APIRouter(prefix="/api/users", tags=["account"])
         self.router.add_api_route("/me", self.get_current_user, methods=["GET"])
         self.router.add_api_route("/me", self.update_account, methods=["PUT"])
+        self.router.add_api_route("/search/username/{username}", self.search_by_username, methods=["GET"])
         self.router.add_api_route("/{user_id}", self.get_user, methods=["GET"])
 
     def get_current_user_id(self, authorization: str = Header(None)):
@@ -47,6 +48,12 @@ class AccountController:
 
     def get_user(self, user_id: int, db: Session = Depends(get_db)):
         client = db.query(Client).filter(Client.id_Klientas == user_id).first()
+        if not client:
+            raise HTTPException(status_code=404, detail="User not found")
+        return self._client_to_dict(client)
+
+    def search_by_username(self, username: str, db: Session = Depends(get_db)):
+        client = db.query(Client).filter(Client.slapyvardis == username).first()
         if not client:
             raise HTTPException(status_code=404, detail="User not found")
         return self._client_to_dict(client)

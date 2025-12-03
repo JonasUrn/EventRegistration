@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,9 +25,9 @@ class RegisterParticipantRequest(BaseModel):
     pozicija: int
     taskai: int
     dalyvio_tipas: str
-    fk_Klientasid_Klientas: int = None
+    fk_Klientasid_Klientas: Optional[int] = None
     fk_Turnyrasid_Turnyras: int
-    fk_Komandaid_Komanda: int = None
+    fk_Komandaid_Komanda: Optional[int] = None
 
 class TournamentController:
     def __init__(self):

@@ -11,6 +11,8 @@ from classes.match import Match
 from classes.match_participant import MatchParticipant
 from classes.location import Location
 from classes.referee import Referee
+from classes.sponsor import Sponsor
+from classes.match_sponsor import MatchSponsor
 
 class CreateMatchRequest(BaseModel):
     pavadinimas: str
@@ -44,6 +46,16 @@ class AddRefereeRequest(BaseModel):
     tel_numeris: str
     fk_Varzybosid_Varzybos: int
 
+class CreateSponsorRequest(BaseModel):
+    pavadinimas: str
+    el_pastas: str
+    el_puslapis: Optional[str] = None
+    remejo_klase: str
+
+class AddMatchSponsorRequest(BaseModel):
+    fk_Varzybosid_Varzybos: int
+    fk_Remejasid_Remejas: int
+
 class MatchesController:
     def __init__(self):
         self.router = APIRouter(prefix="/api/games", tags=["matches"])
@@ -57,6 +69,11 @@ class MatchesController:
         self.router.add_api_route("/participants/{participant_id}", self.remove_match_participant, methods=["DELETE"])
         self.router.add_api_route("/locations", self.add_location, methods=["POST"])
         self.router.add_api_route("/referees", self.add_referee, methods=["POST"])
+        self.router.add_api_route("/{match_id}/referees", self.get_match_referees, methods=["GET"])
+        self.router.add_api_route("/sponsors", self.get_all_sponsors, methods=["GET"])
+        self.router.add_api_route("/sponsors", self.create_sponsor, methods=["POST"])
+        self.router.add_api_route("/match-sponsors", self.add_match_sponsor, methods=["POST"])
+        self.router.add_api_route("/{match_id}/sponsors", self.get_match_sponsors, methods=["GET"])
 
     def get_matches(self, db: Session = Depends(get_db)):
         matches = db.query(Match).all()
@@ -206,4 +223,59 @@ class MatchesController:
             "licenzijos_id": referee.licenzijos_id,
             "tel_numeris": referee.tel_numeris,
             "fk_Varzybosid_Varzybos": referee.fk_Varzybosid_Varzybos
+        }
+
+    def get_match_referees(self, match_id: int, db: Session = Depends(get_db)):
+        referees = db.query(Referee).filter(
+            Referee.fk_Varzybosid_Varzybos == match_id
+        ).all()
+        return [self._referee_to_dict(r) for r in referees]
+
+    def get_all_sponsors(self, db: Session = Depends(get_db)):
+        sponsors = db.query(Sponsor).all()
+        return [self._sponsor_to_dict(s) for s in sponsors]
+
+    def create_sponsor(self, request: CreateSponsorRequest, db: Session = Depends(get_db)):
+        new_sponsor = Sponsor(
+            pavadinimas=request.pavadinimas,
+            el_pastas=request.el_pastas,
+            el_puslapis=request.el_puslapis,
+            remejo_klase=request.remejo_klase
+        )
+        db.add(new_sponsor)
+        db.commit()
+        db.refresh(new_sponsor)
+        return self._sponsor_to_dict(new_sponsor)
+
+    def add_match_sponsor(self, request: AddMatchSponsorRequest, db: Session = Depends(get_db)):
+        new_match_sponsor = MatchSponsor(
+            fk_Varzybosid_Varzybos=request.fk_Varzybosid_Varzybos,
+            fk_Remejasid_Remejas=request.fk_Remejasid_Remejas
+        )
+        db.add(new_match_sponsor)
+        db.commit()
+        return {"message": "Sponsor added to match successfully"}
+
+    def get_match_sponsors(self, match_id: int, db: Session = Depends(get_db)):
+        match_sponsors = db.query(MatchSponsor).filter(
+            MatchSponsor.fk_Varzybosid_Varzybos == match_id
+        ).all()
+
+        sponsors = []
+        for ms in match_sponsors:
+            sponsor = db.query(Sponsor).filter(
+                Sponsor.id_Remejas == ms.fk_Remejasid_Remejas
+            ).first()
+            if sponsor:
+                sponsors.append(self._sponsor_to_dict(sponsor))
+
+        return sponsors
+
+    def _sponsor_to_dict(self, sponsor):
+        return {
+            "id_Remejas": sponsor.id_Remejas,
+            "pavadinimas": sponsor.pavadinimas,
+            "el_pastas": sponsor.el_pastas,
+            "el_puslapis": sponsor.el_puslapis,
+            "remejo_klase": sponsor.remejo_klase
         }

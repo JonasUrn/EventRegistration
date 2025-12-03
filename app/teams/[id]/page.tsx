@@ -25,7 +25,7 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
     country: '',
     city: '',
   });
-  const [newMemberUserId, setNewMemberUserId] = useState('');
+  const [newMemberUsername, setNewMemberUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -115,20 +115,27 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
     setMessage(null);
 
     try {
+      // Search for user by username
+      const user = await api.users.getUserByUsername(newMemberUsername);
+
       await api.teams.addMember({
         fk_Komandaid_Komanda: team.id_Komanda,
-        fk_Klientasid_Klientas: parseInt(newMemberUserId),
+        fk_Klientasid_Klientas: user.id_Klientas,
         role: 'Player',
       });
 
       const membersData = await api.teams.getMembers(team.id_Komanda);
       setMembers(membersData);
       setMessage({ type: 'success', text: 'Member added successfully!' });
-      setNewMemberUserId('');
+      setNewMemberUsername('');
       setIsAddingMember(false);
     } catch (error) {
       console.error('Failed to add member:', error);
-      setMessage({ type: 'error', text: 'Failed to add member' });
+      if (error instanceof ApiError && error.status === 404) {
+        setMessage({ type: 'error', text: 'User not found. Please check the username.' });
+      } else {
+        setMessage({ type: 'error', text: 'Failed to add member' });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -246,11 +253,11 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
           {isAddingMember && (
             <form onSubmit={handleAddMember} className="border border-gray-700 bg-gray-800 rounded-xl shadow-lg p-6 mb-4">
               <Input
-                label="User ID"
-                value={newMemberUserId}
-                onChange={setNewMemberUserId}
-                placeholder="Enter user ID"
-                type="number"
+                label="Username"
+                value={newMemberUsername}
+                onChange={setNewMemberUsername}
+                placeholder="Enter username"
+                type="text"
                 required
               />
               <div className="flex gap-2 mt-4">

@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Navigation from '../../components/Navigation';
 import Input from '../../components/Input';
+import Select from '../../components/Select';
 import Button from '../../components/Button';
 import Message from '../../components/Message';
 import Card from '../../components/Card';
@@ -17,7 +18,13 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const [game, setGame] = useState<any>(null);
   const [tournament, setTournament] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
+  const [referees, setReferees] = useState<any[]>([]);
+  const [sponsors, setSponsors] = useState<any[]>([]);
+  const [allSponsors, setAllSponsors] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [isAddingReferee, setIsAddingReferee] = useState(false);
+  const [isAddingSponsor, setIsAddingSponsor] = useState(false);
+  const [editingParticipant, setEditingParticipant] = useState<number | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -26,6 +33,24 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
     start: '',
     end: '',
   });
+
+  const [refereeFormData, setRefereeFormData] = useState({
+    vardas: '',
+    pavarde: '',
+    el_pastas: '',
+    salis: '',
+    miestas: '',
+    licenzijos_id: '',
+    tel_numeris: '',
+  });
+
+  const [sponsorFormData, setSponsorFormData] = useState({
+    selectedSponsor: '',
+  });
+
+  const [participantEditData, setParticipantEditData] = useState<{
+    [key: number]: { taskai: number; yra_laimėtojas: boolean | null }
+  }>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,11 +72,45 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
         const participantsData = await api.games.getParticipants(parseInt(resolvedParams.id));
         setParticipants(participantsData);
 
+        // Fetch referees
+        try {
+          const refereesData = await api.games.getReferees(parseInt(resolvedParams.id));
+          setReferees(refereesData);
+        } catch (error) {
+          console.error('Failed to fetch referees:', error);
+        }
+
+        // Fetch sponsors
+        try {
+          const sponsorsData = await api.games.getMatchSponsors(parseInt(resolvedParams.id));
+          setSponsors(sponsorsData);
+        } catch (error) {
+          console.error('Failed to fetch sponsors:', error);
+        }
+
+        // Fetch all sponsors for dropdown
+        try {
+          const allSponsorsData = await api.games.getAllSponsors();
+          setAllSponsors(allSponsorsData);
+        } catch (error) {
+          console.error('Failed to fetch all sponsors:', error);
+        }
+
         setFormData({
           name: gameData.pavadinimas,
           start: gameData.pradžia,
           end: gameData.pabaiga,
         });
+
+        // Initialize participant edit data
+        const initialEditData: any = {};
+        participantsData.forEach((p: any) => {
+          initialEditData[p.id_Varzybu_dalyvis] = {
+            taskai: p.taskai,
+            yra_laimėtojas: p.yra_laimėtojas,
+          };
+        });
+        setParticipantEditData(initialEditData);
       } catch (error) {
         console.error('Failed to fetch data:', error);
         router.push('/games');
@@ -106,6 +165,88 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
         console.error('Failed to delete game:', error);
         setMessage({ type: 'error', text: 'Failed to delete game' });
       }
+    }
+  };
+
+  const handleAddReferee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      await api.games.addReferee({
+        ...refereeFormData,
+        fk_Varzybosid_Varzybos: game.id_Varzybos,
+      });
+
+      const refereesData = await api.games.getReferees(game.id_Varzybos);
+      setReferees(refereesData);
+
+      setMessage({ type: 'success', text: 'Referee added successfully!' });
+      setRefereeFormData({
+        vardas: '',
+        pavarde: '',
+        el_pastas: '',
+        salis: '',
+        miestas: '',
+        licenzijos_id: '',
+        tel_numeris: '',
+      });
+      setIsAddingReferee(false);
+    } catch (error) {
+      console.error('Failed to add referee:', error);
+      setMessage({ type: 'error', text: 'Failed to add referee' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddSponsor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      await api.games.addMatchSponsor({
+        fk_Varzybosid_Varzybos: game.id_Varzybos,
+        fk_Remejasid_Remejas: parseInt(sponsorFormData.selectedSponsor),
+      });
+
+      const sponsorsData = await api.games.getMatchSponsors(game.id_Varzybos);
+      setSponsors(sponsorsData);
+
+      setMessage({ type: 'success', text: 'Sponsor added successfully!' });
+      setSponsorFormData({ selectedSponsor: '' });
+      setIsAddingSponsor(false);
+    } catch (error) {
+      console.error('Failed to add sponsor:', error);
+      setMessage({ type: 'error', text: 'Failed to add sponsor' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateParticipant = async (participantId: number) => {
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      const data = participantEditData[participantId];
+      await api.games.updateParticipant(participantId, {
+        taskai: data.taskai,
+        yra_laimėtojas: data.yra_laimėtojas,
+      });
+
+      const participantsData = await api.games.getParticipants(game.id_Varzybos);
+      setParticipants(participantsData);
+
+      setMessage({ type: 'success', text: 'Participant updated successfully!' });
+      setEditingParticipant(null);
+    } catch (error) {
+      console.error('Failed to update participant:', error);
+      setMessage({ type: 'error', text: 'Failed to update participant' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -195,19 +336,223 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <p className="text-gray-400">No participants yet.</p>
           ) : (
             <div className="flex flex-col gap-2">
-              {participants.map(participant => (
-                <Card key={participant.id_Varzybu_dalyvis}>
-                  <div className="flex justify-between">
-                    <div>
-                      <p className="font-bold text-white">Tournament Participant ID: {participant.fk_Turnyro_dalyvisid_Turnyro_dalyvis}</p>
-                      <p className="text-sm text-gray-400">Points: {participant.taskai}</p>
-                    </div>
-                    {participant.yra_laimėtojas !== null && (
-                      <div className="text-right">
-                        <p className={`text-sm font-medium ${participant.yra_laimėtojas ? 'text-green-400' : 'text-red-400'}`}>
-                          {participant.yra_laimėtojas ? 'Winner' : 'Loser'}
-                        </p>
+              {participants.map(participant => {
+                const isEditingThis = editingParticipant === participant.id_Varzybu_dalyvis;
+                return (
+                  <Card key={participant.id_Varzybu_dalyvis}>
+                    {isEditingThis && canManage ? (
+                      <div className="flex flex-col gap-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-2">Points</label>
+                            <input
+                              type="number"
+                              value={participantEditData[participant.id_Varzybu_dalyvis]?.taskai || 0}
+                              onChange={(e) => setParticipantEditData({
+                                ...participantEditData,
+                                [participant.id_Varzybu_dalyvis]: {
+                                  ...participantEditData[participant.id_Varzybu_dalyvis],
+                                  taskai: parseInt(e.target.value) || 0,
+                                }
+                              })}
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-2">Winner</label>
+                            <select
+                              value={participantEditData[participant.id_Varzybu_dalyvis]?.yra_laimėtojas === null ? 'null' : participantEditData[participant.id_Varzybu_dalyvis]?.yra_laimėtojas?.toString() || 'false'}
+                              onChange={(e) => {
+                                const value = e.target.value === 'null' ? null : e.target.value === 'true';
+                                setParticipantEditData({
+                                  ...participantEditData,
+                                  [participant.id_Varzybu_dalyvis]: {
+                                    ...participantEditData[participant.id_Varzybu_dalyvis],
+                                    yra_laimėtojas: value,
+                                  }
+                                });
+                              }}
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                            >
+                              <option value="null">Not decided</option>
+                              <option value="true">Winner</option>
+                              <option value="false">Loser</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button onClick={() => handleUpdateParticipant(participant.id_Varzybu_dalyvis)} disabled={isLoading}>
+                            {isLoading ? 'Saving...' : 'Save'}
+                          </Button>
+                          <Button variant="secondary" onClick={() => setEditingParticipant(null)}>Cancel</Button>
+                        </div>
                       </div>
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-bold text-white">Tournament Participant ID: {participant.fk_Turnyro_dalyvisid_Turnyro_dalyvis}</p>
+                          <p className="text-sm text-gray-400">Points: {participant.taskai}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {participant.yra_laimėtojas !== null && (
+                            <p className={`text-sm font-medium ${participant.yra_laimėtojas ? 'text-green-400' : 'text-red-400'}`}>
+                              {participant.yra_laimėtojas ? 'Winner' : 'Loser'}
+                            </p>
+                          )}
+                          {canManage && (
+                            <Button variant="secondary" onClick={() => setEditingParticipant(participant.id_Varzybu_dalyvis)}>
+                              Edit
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Referees Section */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">Referees ({referees.length})</h2>
+            {canManage && !isAddingReferee && (
+              <Button onClick={() => setIsAddingReferee(true)}>Add Referee</Button>
+            )}
+          </div>
+
+          {isAddingReferee && (
+            <Card>
+              <form onSubmit={handleAddReferee} className="flex flex-col gap-4 mb-4">
+                <h3 className="font-bold text-white">Add New Referee</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="First Name"
+                    value={refereeFormData.vardas}
+                    onChange={(val) => setRefereeFormData({ ...refereeFormData, vardas: val })}
+                    required
+                  />
+                  <Input
+                    label="Last Name"
+                    value={refereeFormData.pavarde}
+                    onChange={(val) => setRefereeFormData({ ...refereeFormData, pavarde: val })}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Email"
+                    type="email"
+                    value={refereeFormData.el_pastas}
+                    onChange={(val) => setRefereeFormData({ ...refereeFormData, el_pastas: val })}
+                    required
+                  />
+                  <Input
+                    label="Phone"
+                    value={refereeFormData.tel_numeris}
+                    onChange={(val) => setRefereeFormData({ ...refereeFormData, tel_numeris: val })}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Country"
+                    value={refereeFormData.salis}
+                    onChange={(val) => setRefereeFormData({ ...refereeFormData, salis: val })}
+                    required
+                  />
+                  <Input
+                    label="City"
+                    value={refereeFormData.miestas}
+                    onChange={(val) => setRefereeFormData({ ...refereeFormData, miestas: val })}
+                    required
+                  />
+                </div>
+                <Input
+                  label="License ID"
+                  value={refereeFormData.licenzijos_id}
+                  onChange={(val) => setRefereeFormData({ ...refereeFormData, licenzijos_id: val })}
+                  required
+                />
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? 'Adding...' : 'Add Referee'}
+                  </Button>
+                  <Button variant="secondary" onClick={() => setIsAddingReferee(false)}>Cancel</Button>
+                </div>
+              </form>
+            </Card>
+          )}
+
+          {referees.length === 0 ? (
+            <p className="text-gray-400">No referees assigned yet.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {referees.map(referee => (
+                <Card key={referee.id_Teisejas}>
+                  <div>
+                    <p className="font-bold text-white">{referee.vardas} {referee.pavarde}</p>
+                    <p className="text-sm text-gray-400">{referee.el_pastas} • {referee.tel_numeris}</p>
+                    <p className="text-sm text-gray-400">{referee.miestas}, {referee.salis} • License: {referee.licenzijos_id}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sponsors Section */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">Sponsors ({sponsors.length})</h2>
+            {canManage && !isAddingSponsor && (
+              <Button onClick={() => setIsAddingSponsor(true)}>Add Sponsor</Button>
+            )}
+          </div>
+
+          {isAddingSponsor && (
+            <Card>
+              <form onSubmit={handleAddSponsor} className="flex flex-col gap-4 mb-4">
+                <h3 className="font-bold text-white">Add Sponsor</h3>
+                <Select
+                  label="Select Sponsor"
+                  value={sponsorFormData.selectedSponsor}
+                  onChange={(val) => setSponsorFormData({ selectedSponsor: val })}
+                  options={[
+                    { value: '', label: 'Select a sponsor...' },
+                    ...allSponsors.map(s => ({
+                      value: s.id_Remejas.toString(),
+                      label: `${s.pavadinimas} (${s.remejo_klase})`
+                    }))
+                  ]}
+                  required
+                />
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={isLoading || !sponsorFormData.selectedSponsor}>
+                    {isLoading ? 'Adding...' : 'Add Sponsor'}
+                  </Button>
+                  <Button variant="secondary" onClick={() => setIsAddingSponsor(false)}>Cancel</Button>
+                </div>
+              </form>
+            </Card>
+          )}
+
+          {sponsors.length === 0 ? (
+            <p className="text-gray-400">No sponsors yet.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {sponsors.map(sponsor => (
+                <Card key={sponsor.id_Remejas}>
+                  <div>
+                    <p className="font-bold text-white">{sponsor.pavadinimas}</p>
+                    <p className="text-sm text-gray-400">Class: {sponsor.remejo_klase}</p>
+                    <p className="text-sm text-gray-400">{sponsor.el_pastas}</p>
+                    {sponsor.el_puslapis && (
+                      <a href={sponsor.el_puslapis} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-400 hover:underline">
+                        {sponsor.el_puslapis}
+                      </a>
                     )}
                   </div>
                 </Card>

@@ -20,6 +20,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
   const [participants, setParticipants] = useState<any[]>([]);
   const [games, setGames] = useState<any[]>([]);
   const [userTeams, setUserTeams] = useState<any[]>([]);
+  const [allSponsors, setAllSponsors] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -41,6 +42,21 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
     name: '',
     start: '',
     end: '',
+    participant1: '',
+    participant2: '',
+    addReferee: false,
+    refereeFirstName: '',
+    refereeLastName: '',
+    refereeEmail: '',
+    refereePhone: '',
+    refereeCountry: '',
+    refereeCity: '',
+    refereeLicense: '',
+    addSponsor: false,
+    sponsorName: '',
+    sponsorEmail: '',
+    sponsorWebsite: '',
+    sponsorClass: 'Auksinis',
   });
 
   const [joinFormData, setJoinFormData] = useState({
@@ -74,6 +90,14 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         const allTeams = await api.teams.getAll();
         const myTeams = allTeams.filter((t: any) => t.fk_Klientasid_Klientas === userData.id_Klientas);
         setUserTeams(myTeams);
+
+        // Get all sponsors
+        try {
+          const sponsorsData = await api.games.getAllSponsors();
+          setAllSponsors(sponsorsData);
+        } catch (error) {
+          console.error('Failed to fetch sponsors:', error);
+        }
 
         setFormData({
           name: tournamentData.pavadinimas,
@@ -153,12 +177,60 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
     setMessage(null);
 
     try {
-      await api.games.create({
+      const newGame = await api.games.create({
         pavadinimas: gameFormData.name,
         pradžia: gameFormData.start,
         pabaiga: gameFormData.end,
         fk_Turnyrasid_Turnyras: tournament.id_Turnyras,
       });
+
+      // Add participants if selected
+      if (gameFormData.participant1) {
+        await api.games.addParticipant({
+          taskai: 0,
+          yra_laimėtojas: null,
+          fk_Varzybosid_Varzybos: newGame.id_Varzybos,
+          fk_Turnyro_dalyvisid_Turnyro_dalyvis: parseInt(gameFormData.participant1),
+        });
+      }
+
+      if (gameFormData.participant2) {
+        await api.games.addParticipant({
+          taskai: 0,
+          yra_laimėtojas: null,
+          fk_Varzybosid_Varzybos: newGame.id_Varzybos,
+          fk_Turnyro_dalyvisid_Turnyro_dalyvis: parseInt(gameFormData.participant2),
+        });
+      }
+
+      // Add referee if selected
+      if (gameFormData.addReferee) {
+        await api.games.addReferee({
+          vardas: gameFormData.refereeFirstName,
+          pavarde: gameFormData.refereeLastName,
+          el_pastas: gameFormData.refereeEmail,
+          tel_numeris: gameFormData.refereePhone,
+          salis: gameFormData.refereeCountry,
+          miestas: gameFormData.refereeCity,
+          licenzijos_id: gameFormData.refereeLicense,
+          fk_Varzybosid_Varzybos: newGame.id_Varzybos,
+        });
+      }
+
+      // Add sponsor if selected
+      if (gameFormData.addSponsor) {
+        const newSponsor = await api.games.createSponsor({
+          pavadinimas: gameFormData.sponsorName,
+          el_pastas: gameFormData.sponsorEmail,
+          el_puslapis: gameFormData.sponsorWebsite || null,
+          remejo_klase: gameFormData.sponsorClass,
+        });
+
+        await api.games.addMatchSponsor({
+          fk_Varzybosid_Varzybos: newGame.id_Varzybos,
+          fk_Remejasid_Remejas: newSponsor.id_Remejas,
+        });
+      }
 
       // Refresh games list
       const allGames = await api.games.getAll();
@@ -166,7 +238,26 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
       setGames(tournamentGames);
 
       setMessage({ type: 'success', text: 'Game created successfully!' });
-      setGameFormData({ name: '', start: '', end: '' });
+      setGameFormData({
+        name: '',
+        start: '',
+        end: '',
+        participant1: '',
+        participant2: '',
+        addReferee: false,
+        refereeFirstName: '',
+        refereeLastName: '',
+        refereeEmail: '',
+        refereePhone: '',
+        refereeCountry: '',
+        refereeCity: '',
+        refereeLicense: '',
+        addSponsor: false,
+        sponsorName: '',
+        sponsorEmail: '',
+        sponsorWebsite: '',
+        sponsorClass: 'Auksinis',
+      });
       setIsCreatingGame(false);
     } catch (error) {
       console.error('Failed to create game:', error);
@@ -182,7 +273,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
     setMessage(null);
 
     try {
-      await api.tournaments.registerParticipant({
+      await api.tournaments.addParticipant({
         pozicija: 0,
         taskai: 0,
         dalyvio_tipas: joinFormData.participantType,
@@ -437,7 +528,160 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                  <Select
+                    label="Participant 1"
+                    value={gameFormData.participant1}
+                    onChange={(val) => setGameFormData({ ...gameFormData, participant1: val })}
+                    options={[
+                      { value: '', label: 'Select participant...' },
+                      ...participants.map(p => ({
+                        value: p.id_Turnyro_dalyvis.toString(),
+                        label: p.dalyvio_tipas === 'Team'
+                          ? `Team: ${p.komanda_pavadinimas || 'Unknown'}`
+                          : `User: ${p.klientas_vardas || 'Unknown'} ${p.klientas_pavarde || ''}`
+                      }))
+                    ]}
+                  />
+                  <Select
+                    label="Participant 2"
+                    value={gameFormData.participant2}
+                    onChange={(val) => setGameFormData({ ...gameFormData, participant2: val })}
+                    options={[
+                      { value: '', label: 'Select participant...' },
+                      ...participants.map(p => ({
+                        value: p.id_Turnyro_dalyvis.toString(),
+                        label: p.dalyvio_tipas === 'Team'
+                          ? `Team: ${p.komanda_pavadinimas || 'Unknown'}`
+                          : `User: ${p.klientas_vardas || 'Unknown'} ${p.klientas_pavarde || ''}`
+                      }))
+                    ]}
+                  />
+                </div>
+
+                {/* Referee Section */}
+                <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={gameFormData.addReferee}
+                      onChange={(e) => setGameFormData({ ...gameFormData, addReferee: e.target.checked })}
+                      style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                    />
+                    <label style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer' }}
+                      onClick={() => setGameFormData({ ...gameFormData, addReferee: !gameFormData.addReferee })}>
+                      Add Referee
+                    </label>
+                  </div>
+
+                  {gameFormData.addReferee && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                        <Input
+                          label="First Name"
+                          value={gameFormData.refereeFirstName}
+                          onChange={(val) => setGameFormData({ ...gameFormData, refereeFirstName: val })}
+                          required={gameFormData.addReferee}
+                        />
+                        <Input
+                          label="Last Name"
+                          value={gameFormData.refereeLastName}
+                          onChange={(val) => setGameFormData({ ...gameFormData, refereeLastName: val })}
+                          required={gameFormData.addReferee}
+                        />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                        <Input
+                          label="Email"
+                          type="email"
+                          value={gameFormData.refereeEmail}
+                          onChange={(val) => setGameFormData({ ...gameFormData, refereeEmail: val })}
+                          required={gameFormData.addReferee}
+                        />
+                        <Input
+                          label="Phone"
+                          value={gameFormData.refereePhone}
+                          onChange={(val) => setGameFormData({ ...gameFormData, refereePhone: val })}
+                          required={gameFormData.addReferee}
+                        />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                        <Input
+                          label="Country"
+                          value={gameFormData.refereeCountry}
+                          onChange={(val) => setGameFormData({ ...gameFormData, refereeCountry: val })}
+                          required={gameFormData.addReferee}
+                        />
+                        <Input
+                          label="City"
+                          value={gameFormData.refereeCity}
+                          onChange={(val) => setGameFormData({ ...gameFormData, refereeCity: val })}
+                          required={gameFormData.addReferee}
+                        />
+                      </div>
+                      <Input
+                        label="License ID"
+                        value={gameFormData.refereeLicense}
+                        onChange={(val) => setGameFormData({ ...gameFormData, refereeLicense: val })}
+                        required={gameFormData.addReferee}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Sponsor Section */}
+                <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={gameFormData.addSponsor}
+                      onChange={(e) => setGameFormData({ ...gameFormData, addSponsor: e.target.checked })}
+                      style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                    />
+                    <label style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer' }}
+                      onClick={() => setGameFormData({ ...gameFormData, addSponsor: !gameFormData.addSponsor })}>
+                      Add Sponsor
+                    </label>
+                  </div>
+
+                  {gameFormData.addSponsor && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <Input
+                        label="Sponsor Name"
+                        value={gameFormData.sponsorName}
+                        onChange={(val) => setGameFormData({ ...gameFormData, sponsorName: val })}
+                        required={gameFormData.addSponsor}
+                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                        <Input
+                          label="Sponsor Email"
+                          type="email"
+                          value={gameFormData.sponsorEmail}
+                          onChange={(val) => setGameFormData({ ...gameFormData, sponsorEmail: val })}
+                          required={gameFormData.addSponsor}
+                        />
+                        <Input
+                          label="Website (optional)"
+                          value={gameFormData.sponsorWebsite}
+                          onChange={(val) => setGameFormData({ ...gameFormData, sponsorWebsite: val })}
+                        />
+                      </div>
+                      <Select
+                        label="Sponsor Class"
+                        value={gameFormData.sponsorClass}
+                        onChange={(val) => setGameFormData({ ...gameFormData, sponsorClass: val })}
+                        options={[
+                          { value: 'Auksinis', label: 'Gold (Auksinis)' },
+                          { value: 'Sidabrinis', label: 'Silver (Sidabrinis)' },
+                          { value: 'Bronzinis', label: 'Bronze (Bronzinis)' },
+                        ]}
+                        required={gameFormData.addSponsor}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                   <Button type="submit" disabled={isLoading}>
                     {isLoading ? 'Creating...' : 'Create Game'}
                   </Button>
