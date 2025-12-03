@@ -124,6 +124,16 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
 
   const canManage = tournament.fk_Klientasid_Klientas === currentUser.id_Klientas || currentUser.administratorius;
 
+  // Check if current user is already a participant in this tournament
+  const isUserParticipant = participants.some(p => 
+    p.dalyvio_tipas === 'User' && p.fk_Klientasid_Klientas === currentUser.id_Klientas
+  );
+
+  // Check if any of user's teams are already participants
+  const isTeamParticipant = participants.some(p => 
+    p.dalyvio_tipas === 'Team' && userTeams.some(t => t.id_Komanda === p.fk_Komandaid_Komanda)
+  );
+
   const handleEdit = () => {
     setIsEditing(true);
     setMessage(null);
@@ -450,7 +460,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         </Card>
 
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-          {!isJoining && (
+          {!isJoining && !isUserParticipant && !isTeamParticipant && (
             <Button onClick={() => setIsJoining(true)}>Join Tournament</Button>
           )}
         </div>
@@ -535,12 +545,12 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                     onChange={(val) => setGameFormData({ ...gameFormData, participant1: val })}
                     options={[
                       { value: '', label: 'Select participant...' },
-                      ...participants.map(p => ({
-                        value: p.id_Turnyro_dalyvis.toString(),
-                        label: p.dalyvio_tipas === 'Team'
+                      ...participants.map(p => {
+                        const label = p.dalyvio_tipas === 'Team'
                           ? `Team: ${p.komanda_pavadinimas || 'Unknown'}`
-                          : `User: ${p.klientas_vardas || 'Unknown'} ${p.klientas_pavarde || ''}`
-                      }))
+                          : `User: ${p.klientas_vardas?.trim() || 'User'} ${(p.klientas_pavarde || '').trim()}`;
+                        return { value: p.id_Turnyro_dalyvis.toString(), label };
+                      })
                     ]}
                   />
                   <Select
@@ -549,12 +559,12 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                     onChange={(val) => setGameFormData({ ...gameFormData, participant2: val })}
                     options={[
                       { value: '', label: 'Select participant...' },
-                      ...participants.map(p => ({
-                        value: p.id_Turnyro_dalyvis.toString(),
-                        label: p.dalyvio_tipas === 'Team'
+                      ...participants.map(p => {
+                        const label = p.dalyvio_tipas === 'Team'
                           ? `Team: ${p.komanda_pavadinimas || 'Unknown'}`
-                          : `User: ${p.klientas_vardas || 'Unknown'} ${p.klientas_pavarde || ''}`
-                      }))
+                          : `User: ${p.klientas_vardas?.trim() || 'User'} ${(p.klientas_pavarde || '').trim()}`;
+                        return { value: p.id_Turnyro_dalyvis.toString(), label };
+                      })
                     ]}
                   />
                 </div>
@@ -719,21 +729,26 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
             <p style={{ color: 'var(--text-secondary)' }}>No participants yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {participants.map(participant => (
-                <Card key={participant.id_Turnyro_dalyvis}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div>
-                      <p style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                        {participant.dalyvio_tipas} {participant.dalyvio_tipas === 'User' ? `- User ID: ${participant.fk_Klientasid_Klientas}` : `- Team ID: ${participant.fk_Komandaid_Komanda}`}
-                      </p>
-                      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Points: {participant.taskai}</p>
+              {participants.map(participant => {
+                const displayName = participant.dalyvio_tipas === 'Team'
+                  ? participant.komanda_pavadinimas || 'Unknown Team'
+                  : `${participant.klientas_vardas || 'Unknown'} ${participant.klientas_pavarde || ''}`;
+                return (
+                  <Card key={participant.id_Turnyro_dalyvis}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div>
+                        <p style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                          {participant.dalyvio_tipas}: {displayName}
+                        </p>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Points: {participant.taskai}</p>
+                      </div>
+                      {participant.pozicija > 0 && (
+                        <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Position: {participant.pozicija}</p>
+                      )}
                     </div>
-                    {participant.pozicija > 0 && (
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Position: {participant.pozicija}</p>
-                    )}
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

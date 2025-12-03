@@ -9,6 +9,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import get_db
 from classes.tournament import Tournament
 from classes.tournament_participant import TournamentParticipant
+from classes.match_participant import MatchParticipant
+from classes.match import Match
+from classes.referee import Referee
+from classes.match_sponsor import MatchSponsor
+from classes.client import Client
+from classes.team import Team
 
 class CreateTournamentRequest(BaseModel):
     pavadinimas: str
@@ -91,6 +97,34 @@ class TournamentController:
         if not tournament:
             raise HTTPException(status_code=404, detail="Tournament not found")
 
+        # Delete cascade: referees -> match sponsors -> match participants -> matches -> tournament participants -> tournament
+        # Get all match IDs for this tournament
+        match_ids = db.query(Match.id_Varzybos).filter(Match.fk_Turnyrasid_Turnyras == tournament_id).all()
+        match_ids = [m[0] for m in match_ids]
+
+        # 1. Delete all referees for matches in this tournament
+        if match_ids:
+            db.query(Referee).filter(Referee.fk_Varzybosid_Varzybos.in_(match_ids)).delete(synchronize_session=False)
+
+        # 2. Delete all match sponsors for matches in this tournament
+        if match_ids:
+            db.query(MatchSponsor).filter(MatchSponsor.fk_Varzybosid_Varzybos.in_(match_ids)).delete(synchronize_session=False)
+
+        # 3. Delete all match participants for matches in this tournament
+        if match_ids:
+            db.query(MatchParticipant).filter(
+                MatchParticipant.fk_Varzybosid_Varzybos.in_(match_ids)
+            ).delete(synchronize_session=False)
+
+        # 4. Delete all matches in this tournament
+        db.query(Match).filter(Match.fk_Turnyrasid_Turnyras == tournament_id).delete()
+
+        # 5. Delete all tournament participants in this tournament
+        db.query(TournamentParticipant).filter(
+            TournamentParticipant.fk_Turnyrasid_Turnyras == tournament_id
+        ).delete()
+
+        # 6. Delete the tournament
         db.delete(tournament)
         db.commit()
         return {"message": "Tournament deleted successfully"}
@@ -99,7 +133,7 @@ class TournamentController:
         participants = db.query(TournamentParticipant).filter(
             TournamentParticipant.fk_Turnyrasid_Turnyras == tournament_id
         ).all()
-        return [self._participant_to_dict(p) for p in participants]
+        return [self._participant_to_dict(p, db) for p in participants]
 
     def register_participant(self, request: RegisterParticipantRequest, db: Session = Depends(get_db)):
         new_participant = TournamentParticipant(
@@ -114,7 +148,7 @@ class TournamentController:
         db.add(new_participant)
         db.commit()
         db.refresh(new_participant)
-        return self._participant_to_dict(new_participant)
+        return self._participant_to_dict(new_participant, db)
 
     def remove_participant(self, participant_id: int, db: Session = Depends(get_db)):
         participant = db.query(TournamentParticipant).filter(
@@ -141,8 +175,9 @@ class TournamentController:
             "fk_Klientasid_Klientas": tournament.fk_Klientasid_Klientas
         }
 
-    def _participant_to_dict(self, participant):
-        return {
+    def _participant_to_dict(self, participant, db: Session = None):
+        """Convert TournamentParticipant to dict, including user/team names"""
+        result = {
             "id_Turnyro_dalyvis": participant.id_Turnyro_dalyvis,
             "pozicija": participant.pozicija,
             "taskai": participant.taskai,
@@ -152,3 +187,25 @@ class TournamentController:
             "fk_Turnyrasid_Turnyras": participant.fk_Turnyrasid_Turnyras,
             "fk_Komandaid_Komanda": participant.fk_Komandaid_Komanda
         }
+        
+        # Add user or team name based on participant type
+        if participant.dalyvio_tipas == 'User' and participant.fk_Klientasid_Klientas and db:
+            client = db.query(Client).filter(
+                Client.id_Klientas == participant.fk_Klientasid_Klientas
+            ).first()
+            if client:
+                result["klientas_vardas"] = client.vardas
+                result["klientas_pavarde"] = client.pavarde
+            else:
+                result["klientas_vardas"] = None
+                result["klientas_pavarde"] = None
+        elif participant.dalyvio_tipas == 'Team' and participant.fk_Komandaid_Komanda and db:
+            team = db.query(Team).filter(
+                Team.id_Komanda == participant.fk_Komandaid_Komanda
+            ).first()
+            if team:
+                result["komanda_pavadinimas"] = team.pavadinimas
+            else:
+                result["komanda_pavadinimas"] = None
+        
+        return result
