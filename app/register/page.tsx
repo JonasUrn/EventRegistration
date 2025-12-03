@@ -44,6 +44,7 @@ const RegisterPage = () => {
         slaptazodis: formData.password,
         salis: formData.country,
         miestas: formData.city,
+        organizatorius: formData.isOrganizer,
       });
 
       setMessage({ type: 'success', text: 'Registration successful! Redirecting to login...' });

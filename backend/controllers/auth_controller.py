@@ -24,6 +24,7 @@ class RegisterRequest(BaseModel):
     slaptazodis: str = Field(..., max_length=72)
     salis: str
     miestas: str
+    organizatorius: bool = False
 
 class LoginRequest(BaseModel):
     slapyvardis: str
@@ -58,7 +59,7 @@ class AuthController:
             slaptazodis=hashed_password,
             salis=request.salis,
             miestas=request.miestas,
-            organizatorius=False,
+            organizatorius=request.organizatorius,
             administratorius=False,
             patvirtintas_pastas=False
         )

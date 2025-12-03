@@ -7,106 +7,106 @@ import Input from '../../components/Input';
 import Button from '../../components/Button';
 import Message from '../../components/Message';
 import Card from '../../components/Card';
-import { getCurrentUser, games, tournaments, gameReferees, referees, gameSponsors, sponsors, gameParticipants } from '../../data';
+import { authStorage } from '../../lib/auth';
+import { api, ApiError } from '../../lib/api';
 
 const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const resolvedParams = use(params);
   const router = useRouter();
-  const currentUser = getCurrentUser();
-
-  const [game, setGame] = useState(games.find(g => g.id === resolvedParams.id));
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [game, setGame] = useState<any>(null);
+  const [tournament, setTournament] = useState<any>(null);
+  const [participants, setParticipants] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     start: '',
     end: '',
-    winnerPts: 0,
-    loserPts: 0,
   });
 
   useEffect(() => {
-    if (!currentUser) {
-      router.push('/login');
-      return;
-    }
+    const fetchData = async () => {
+      if (!authStorage.isAuthenticated()) {
+        router.push('/login');
+        return;
+      }
 
-    if (!game) {
-      router.push('/games');
-      return;
-    }
+      try {
+        const userData = await api.users.getCurrentUser();
+        setCurrentUser(userData);
 
-    setFormData({
-      name: game.name,
-      start: game.start,
-      end: game.end,
-      winnerPts: game.winnerPts,
-      loserPts: game.loserPts,
-    });
-  }, [currentUser, game, router]);
+        const gameData = await api.games.getById(parseInt(resolvedParams.id));
+        setGame(gameData);
+
+        const tournamentData = await api.tournaments.getById(gameData.fk_Turnyrasid_Turnyras);
+        setTournament(tournamentData);
+
+        const participantsData = await api.games.getParticipants(parseInt(resolvedParams.id));
+        setParticipants(participantsData);
+
+        setFormData({
+          name: gameData.pavadinimas,
+          start: gameData.pradžia,
+          end: gameData.pabaiga,
+        });
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        router.push('/games');
+      }
+    };
+
+    fetchData();
+  }, [resolvedParams.id, router]);
 
   if (!currentUser || !game) {
     return null;
   }
 
-  const isCreator = game.creatorId === currentUser.id;
-  const tournament = tournaments.find(t => t.id === game.tournamentId);
-
-  const gameRefs = gameReferees
-    .filter(gr => gr.gameId === game.id)
-    .map(gr => referees.find(r => r.id === gr.refereeId))
-    .filter(Boolean);
-
-  const gameSpons = gameSponsors
-    .filter(gs => gs.gameId === game.id)
-    .map(gs => sponsors.find(s => s.id === gs.sponsorId))
-    .filter(Boolean);
+  const canManage = tournament && (tournament.fk_Klientasid_Klientas === currentUser.id_Klientas || currentUser.administratorius);
 
   const handleEdit = () => {
     setIsEditing(true);
     setMessage(null);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
 
-    const gameIndex = games.findIndex(g => g.id === game.id);
-    if (gameIndex !== -1) {
-      games[gameIndex] = { ...games[gameIndex], ...formData };
-      setGame(games[gameIndex]);
+    try {
+      await api.games.update(game.id_Varzybos, {
+        pavadinimas: formData.name,
+        pradžia: formData.start,
+        pabaiga: formData.end,
+        fk_Turnyrasid_Turnyras: game.fk_Turnyrasid_Turnyras,
+      });
+
+      const updatedGame = await api.games.getById(game.id_Varzybos);
+      setGame(updatedGame);
       setMessage({ type: 'success', text: 'Game updated successfully!' });
       setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update game:', error);
+      setMessage({ type: 'error', text: 'Failed to update game' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this game? This cannot be undone.')) {
-      const gameIndex = games.findIndex(g => g.id === game.id);
-      if (gameIndex !== -1) {
-        games.splice(gameIndex, 1);
+      try {
+        await api.games.delete(game.id_Varzybos);
         router.push('/games');
+      } catch (error) {
+        console.error('Failed to delete game:', error);
+        setMessage({ type: 'error', text: 'Failed to delete game' });
       }
     }
-  };
-
-  const handleOfferSimilarGames = () => {
-    const similarGames = games.filter(g =>
-      g.id !== game.id && g.tournamentId === game.tournamentId
-    );
-
-    if (similarGames.length === 0) {
-      setMessage({ type: 'error', text: 'No similar games found' });
-    } else {
-      setMessage({
-        type: 'success',
-        text: `Found ${similarGames.length} similar game(s) in the same tournament`
-      });
-    }
-  };
-
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
   };
 
   return (
@@ -115,8 +115,8 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
       <div className="max-w-4xl mx-auto px-6 py-12">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-white">{game.name}</h1>
-          {isCreator && !isEditing && (
+          <h1 className="text-3xl font-bold text-white">{game.pavadinimas}</h1>
+          {canManage && !isEditing && (
             <div className="flex gap-2">
               <Button onClick={handleEdit}>Edit</Button>
               <Button variant="danger" onClick={handleDelete}>Delete Game</Button>
@@ -142,42 +142,26 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label="Start Date & Time"
-                  type="datetime-local"
+                  label="Start Date"
+                  type="date"
                   value={formData.start}
                   onChange={(val) => setFormData({ ...formData, start: val })}
                   required
                 />
 
                 <Input
-                  label="End Date & Time"
-                  type="datetime-local"
+                  label="End Date"
+                  type="date"
                   value={formData.end}
                   onChange={(val) => setFormData({ ...formData, end: val })}
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Winner Points"
-                  type="number"
-                  value={String(formData.winnerPts)}
-                  onChange={(val) => setFormData({ ...formData, winnerPts: parseInt(val) || 0 })}
-                  required
-                />
-
-                <Input
-                  label="Loser Points"
-                  type="number"
-                  value={String(formData.loserPts)}
-                  onChange={(val) => setFormData({ ...formData, loserPts: parseInt(val) || 0 })}
-                  required
-                />
-              </div>
-
               <div className="flex gap-2 mt-4">
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Saving...' : 'Save Changes'}
+                </Button>
                 <Button variant="secondary" onClick={() => { setIsEditing(false); setMessage(null); }}>
                   Cancel
                 </Button>
@@ -187,26 +171,18 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <div className="flex flex-col gap-4">
               <div>
                 <p className="text-sm text-gray-600">Tournament</p>
-                <p className="font-medium text-gray-300">{tournament?.name || 'Unknown'}</p>
+                <p className="font-medium text-gray-300 cursor-pointer hover:text-white" onClick={() => router.push(`/tournaments/${tournament.id_Turnyras}`)}>
+                  {tournament?.pavadinimas || 'Unknown'}
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600">Start</p>
-                  <p className="text-gray-300">{formatDateTime(game.start)}</p>
+                  <p className="text-sm text-gray-600">Start Date</p>
+                  <p className="text-gray-300">{game.pradžia}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">End</p>
-                  <p className="text-gray-300">{formatDateTime(game.end)}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Winner Points</p>
-                  <p className="text-gray-300">{game.winnerPts}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Loser Points</p>
-                  <p className="text-gray-300">{game.loserPts}</p>
+                  <p className="text-sm text-gray-600">End Date</p>
+                  <p className="text-gray-300">{game.pabaiga}</p>
                 </div>
               </div>
             </div>
@@ -214,52 +190,31 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
         </div>
 
         <div className="mb-6">
-          <Button onClick={handleOfferSimilarGames}>Offer Similar Games</Button>
+          <h2 className="text-xl font-bold mb-4 text-white">Participants ({participants.length})</h2>
+          {participants.length === 0 ? (
+            <p className="text-gray-400">No participants yet.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {participants.map(participant => (
+                <Card key={participant.id_Varzybu_dalyvis}>
+                  <div className="flex justify-between">
+                    <div>
+                      <p className="font-bold text-white">Tournament Participant ID: {participant.fk_Turnyro_dalyvisid_Turnyro_dalyvis}</p>
+                      <p className="text-sm text-gray-400">Points: {participant.taskai}</p>
+                    </div>
+                    {participant.yra_laimėtojas !== null && (
+                      <div className="text-right">
+                        <p className={`text-sm font-medium ${participant.yra_laimėtojas ? 'text-green-400' : 'text-red-400'}`}>
+                          {participant.yra_laimėtojas ? 'Winner' : 'Loser'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
-
-        {gameRefs.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-xl font-bold mb-6 text-white">Referees</h2>
-            <div className="flex flex-col gap-2">
-              {gameRefs.map(referee => (
-                <Card key={referee!.id}>
-                  <div className="flex justify-between">
-                    <div>
-                      <p className="font-bold text-white">{referee!.name} {referee!.surname}</p>
-                      <p className="text-sm text-gray-400">{referee!.email}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">License</p>
-                      <p className="text-sm font-medium text-gray-300">{referee!.licenseNumber}</p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {gameSpons.length > 0 && (
-          <div>
-            <h2 className="text-xl font-bold mb-6 text-white">Sponsors</h2>
-            <div className="flex flex-col gap-2">
-              {gameSpons.map(sponsor => (
-                <Card key={sponsor!.id}>
-                  <div className="flex justify-between">
-                    <div>
-                      <p className="font-bold text-white">{sponsor!.name}</p>
-                      <p className="text-sm text-gray-400">{sponsor!.email}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">Class</p>
-                      <p className="text-sm font-medium uppercase text-gray-300">{sponsor!.class}</p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

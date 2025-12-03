@@ -8,20 +8,24 @@ import Select from '../../components/Select';
 import Button from '../../components/Button';
 import Message from '../../components/Message';
 import Card from '../../components/Card';
-import { getCurrentUser, tournaments, games, registrations, tournamentParticipants, teams, gameParticipants, users } from '../../data';
+import { authStorage } from '../../lib/auth';
+import { api, ApiError } from '../../lib/api';
 import layoutStyles from '../../layout.module.css';
 
 const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const resolvedParams = use(params);
   const router = useRouter();
-  const currentUser = getCurrentUser();
-
-  const [tournament, setTournament] = useState(tournaments.find(t => t.id === resolvedParams.id));
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [tournament, setTournament] = useState<any>(null);
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [games, setGames] = useState<any[]>([]);
+  const [userTeams, setUserTeams] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
-  const [isAddingGame, setIsAddingGame] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -32,209 +36,173 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
     maxParticipants: 16,
     format: 'regular' as 'regular' | 'playoffs' | 'finals',
   });
+
   const [gameFormData, setGameFormData] = useState({
     name: '',
     start: '',
     end: '',
-    winnerPts: 3,
-    loserPts: 0,
-    participant1Id: '',
-    participant2Id: '',
   });
-  const [selectedGameId, setSelectedGameId] = useState('');
+
   const [joinFormData, setJoinFormData] = useState({
     participantType: 'User' as 'User' | 'Team',
     teamId: '',
   });
 
   useEffect(() => {
-    if (!currentUser) {
-      router.push('/login');
-      return;
-    }
+    const fetchData = async () => {
+      if (!authStorage.isAuthenticated()) {
+        router.push('/login');
+        return;
+      }
 
-    if (!tournament) {
-      router.push('/tournaments');
-      return;
-    }
+      try {
+        const userData = await api.users.getCurrentUser();
+        setCurrentUser(userData);
 
-    setFormData({
-      name: tournament.name,
-      description: tournament.description,
-      typeOfSport: tournament.typeOfSport,
-      start: tournament.start,
-      end: tournament.end,
-      minParticipants: tournament.minParticipants,
-      maxParticipants: tournament.maxParticipants,
-      format: tournament.format,
-    });
-  }, [currentUser, tournament, router]);
+        const tournamentData = await api.tournaments.getById(parseInt(resolvedParams.id));
+        setTournament(tournamentData);
+
+        const participantsData = await api.tournaments.getParticipants(parseInt(resolvedParams.id));
+        setParticipants(participantsData);
+
+        // Get all games and filter by tournament
+        const allGames = await api.games.getAll();
+        const tournamentGames = allGames.filter((g: any) => g.fk_Turnyrasid_Turnyras === parseInt(resolvedParams.id));
+        setGames(tournamentGames);
+
+        // Get user's teams
+        const allTeams = await api.teams.getAll();
+        const myTeams = allTeams.filter((t: any) => t.fk_Klientasid_Klientas === userData.id_Klientas);
+        setUserTeams(myTeams);
+
+        setFormData({
+          name: tournamentData.pavadinimas,
+          description: tournamentData.aprasas,
+          typeOfSport: tournamentData.sporto_saka,
+          start: tournamentData.pradzia,
+          end: tournamentData.pabaiga,
+          minParticipants: tournamentData.minimalus_nariu_skacius,
+          maxParticipants: tournamentData.maksimalus_nariu_skaicius,
+          format: tournamentData.turnyro_formatas,
+        });
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        router.push('/tournaments');
+      }
+    };
+
+    fetchData();
+  }, [resolvedParams.id, router]);
 
   if (!currentUser || !tournament) {
     return null;
   }
 
-  // Only the creator can edit/delete tournaments
-  const canManage = tournament.creatorId === currentUser.id;
-
-  // Get only added games for display
-  const tournamentGames = games.filter(g => g.tournamentId === tournament.id && g.isAdded);
-
-  // Get unadded games for the add game dropdown
-  const unaddedGames = games.filter(g => g.tournamentId === tournament.id && !g.isAdded);
-
-  const participants = tournamentParticipants.filter(tp => tp.tournamentId === tournament.id);
-
-  const userTeams = teams.filter(t => t.captainId === currentUser.id);
+  const canManage = tournament.fk_Klientasid_Klientas === currentUser.id_Klientas || currentUser.administratorius;
 
   const handleEdit = () => {
     setIsEditing(true);
     setMessage(null);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
 
-    const tournamentIndex = tournaments.findIndex(t => t.id === tournament.id);
-    if (tournamentIndex !== -1) {
-      tournaments[tournamentIndex] = { ...tournaments[tournamentIndex], ...formData };
-      setTournament(tournaments[tournamentIndex]);
+    try {
+      await api.tournaments.update(tournament.id_Turnyras, {
+        pavadinimas: formData.name,
+        aprasas: formData.description,
+        sporto_saka: formData.typeOfSport,
+        pradzia: formData.start,
+        pabaiga: formData.end,
+        minimalus_nariu_skacius: formData.minParticipants,
+        maksimalus_nariu_skaicius: formData.maxParticipants,
+        turnyro_formatas: formData.format,
+        fk_Klientasid_Klientas: tournament.fk_Klientasid_Klientas,
+      });
+
+      const updatedTournament = await api.tournaments.getById(tournament.id_Turnyras);
+      setTournament(updatedTournament);
       setMessage({ type: 'success', text: 'Tournament updated successfully!' });
       setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update tournament:', error);
+      setMessage({ type: 'error', text: 'Failed to update tournament' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this tournament? This cannot be undone.')) {
-      const tournamentIndex = tournaments.findIndex(t => t.id === tournament.id);
-      if (tournamentIndex !== -1) {
-        tournaments.splice(tournamentIndex, 1);
+      try {
+        await api.tournaments.delete(tournament.id_Turnyras);
         router.push('/tournaments');
+      } catch (error) {
+        console.error('Failed to delete tournament:', error);
+        setMessage({ type: 'error', text: 'Failed to delete tournament' });
       }
     }
   };
 
-  const handleCreateGame = (e: React.FormEvent) => {
+  const handleCreateGame = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
 
-    // Validate that 2 participants are selected
-    if (!gameFormData.participant1Id || !gameFormData.participant2Id) {
-      setMessage({ type: 'error', text: 'Please select 2 participants for the game' });
-      return;
-    }
+    try {
+      await api.games.create({
+        pavadinimas: gameFormData.name,
+        pradžia: gameFormData.start,
+        pabaiga: gameFormData.end,
+        fk_Turnyrasid_Turnyras: tournament.id_Turnyras,
+      });
 
-    if (gameFormData.participant1Id === gameFormData.participant2Id) {
-      setMessage({ type: 'error', text: 'Please select 2 different participants' });
-      return;
-    }
+      // Refresh games list
+      const allGames = await api.games.getAll();
+      const tournamentGames = allGames.filter((g: any) => g.fk_Turnyrasid_Turnyras === tournament.id_Turnyras);
+      setGames(tournamentGames);
 
-    const newGameId = String(games.length + 1);
-
-    const newGame = {
-      id: newGameId,
-      tournamentId: tournament.id,
-      name: gameFormData.name,
-      start: gameFormData.start,
-      end: gameFormData.end,
-      winnerPts: gameFormData.winnerPts,
-      loserPts: gameFormData.loserPts,
-      creatorId: currentUser.id,
-      isAdded: false, // Created but not added yet
-    };
-
-    games.push(newGame);
-
-    // Add participants to the game
-    gameParticipants.push({
-      id: String(gameParticipants.length + 1),
-      gameId: newGameId,
-      participantId: gameFormData.participant1Id,
-    });
-
-    gameParticipants.push({
-      id: String(gameParticipants.length + 1),
-      gameId: newGameId,
-      participantId: gameFormData.participant2Id,
-    });
-
-    setMessage({ type: 'success', text: 'Game created successfully with 2 participants! Use "Add Game" to add it to the tournament.' });
-    setGameFormData({
-      name: '',
-      start: '',
-      end: '',
-      winnerPts: 3,
-      loserPts: 0,
-      participant1Id: '',
-      participant2Id: '',
-    });
-    setIsCreatingGame(false);
-  };
-
-  const handleAddGameToTournament = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const gameIndex = games.findIndex(g => g.id === selectedGameId);
-    if (gameIndex !== -1) {
-      games[gameIndex].isAdded = true;
-      setMessage({ type: 'success', text: 'Game added to tournament successfully!' });
-      setSelectedGameId('');
-      setIsAddingGame(false);
+      setMessage({ type: 'success', text: 'Game created successfully!' });
+      setGameFormData({ name: '', start: '', end: '' });
+      setIsCreatingGame(false);
+    } catch (error) {
+      console.error('Failed to create game:', error);
+      setMessage({ type: 'error', text: 'Failed to create game' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleJoin = (e: React.FormEvent) => {
+  const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
 
-    const participantId = joinFormData.participantType === 'Team' ? joinFormData.teamId : currentUser.id;
+    try {
+      await api.tournaments.registerParticipant({
+        pozicija: 0,
+        taskai: 0,
+        dalyvio_tipas: joinFormData.participantType,
+        fk_Klientasid_Klientas: joinFormData.participantType === 'User' ? currentUser.id_Klientas : null,
+        fk_Turnyrasid_Turnyras: tournament.id_Turnyras,
+        fk_Komandaid_Komanda: joinFormData.participantType === 'Team' ? parseInt(joinFormData.teamId) : null,
+      });
 
-    const existingRegistration = registrations.find(
-      r => r.tournamentId === tournament.id &&
-           r.participantType === joinFormData.participantType &&
-           r.participantId === participantId
-    );
+      // Refresh participants
+      const participantsData = await api.tournaments.getParticipants(tournament.id_Turnyras);
+      setParticipants(participantsData);
 
-    if (existingRegistration) {
-      setMessage({ type: 'error', text: 'Already registered for this tournament' });
-      return;
+      setMessage({ type: 'success', text: 'Successfully joined the tournament!' });
+      setIsJoining(false);
+    } catch (error) {
+      console.error('Failed to join tournament:', error);
+      setMessage({ type: 'error', text: 'Failed to join tournament' });
+    } finally {
+      setIsLoading(false);
     }
-
-    const newRegistration = {
-      id: String(registrations.length + 1),
-      participantType: joinFormData.participantType,
-      participantId: participantId,
-      tournamentId: tournament.id,
-      date: new Date().toISOString().split('T')[0],
-    };
-
-    registrations.push(newRegistration);
-
-    const newParticipant = {
-      id: String(tournamentParticipants.length + 1),
-      tournamentId: tournament.id,
-      participantType: joinFormData.participantType,
-      participantId: participantId,
-      position: 0,
-      points: 0,
-    };
-
-    tournamentParticipants.push(newParticipant);
-
-    setMessage({ type: 'success', text: 'Successfully joined the tournament!' });
-    setIsJoining(false);
-  };
-
-  const handleGenerateReport = () => {
-    const reportData = {
-      tournament: tournament.name,
-      games: tournamentGames.length,
-      participants: participants.length,
-      format: tournament.format,
-    };
-
-    setMessage({
-      type: 'success',
-      text: `Report generated: ${reportData.games} games, ${reportData.participants} participants`
-    });
   };
 
   return (
@@ -243,7 +211,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
 
       <div className={layoutStyles.pageContentNarrow}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 className={layoutStyles.pageTitle} style={{ marginBottom: 0 }}>{tournament.name}</h1>
+          <h1 className={layoutStyles.pageTitle} style={{ marginBottom: 0 }}>{tournament.pavadinimas}</h1>
           {canManage && !isEditing && (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <Button variant="secondary" onClick={handleEdit}>Edit</Button>
@@ -281,7 +249,6 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                     borderRadius: 'var(--radius-md)',
                     color: 'var(--text-primary)',
                     fontSize: '0.9375rem',
-                    transition: 'all var(--transition-fast)',
                     fontFamily: 'inherit',
                     resize: 'vertical'
                   }}
@@ -304,7 +271,6 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                   onChange={(val) => setFormData({ ...formData, start: val })}
                   required
                 />
-
                 <Input
                   label="End Date"
                   type="date"
@@ -322,7 +288,6 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                   onChange={(val) => setFormData({ ...formData, minParticipants: parseInt(val) || 2 })}
                   required
                 />
-
                 <Input
                   label="Max Participants"
                   type="number"
@@ -345,7 +310,9 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
               />
 
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Saving...' : 'Save Changes'}
+                </Button>
                 <Button variant="secondary" onClick={() => { setIsEditing(false); setMessage(null); }}>
                   Cancel
                 </Button>
@@ -355,32 +322,32 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Description</p>
-                <p style={{ color: 'var(--text-primary)' }}>{tournament.description}</p>
+                <p style={{ color: 'var(--text-primary)' }}>{tournament.aprasas}</p>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Type of Sport</p>
-                  <p style={{ color: 'var(--text-primary)' }}>{tournament.typeOfSport}</p>
+                  <p style={{ color: 'var(--text-primary)' }}>{tournament.sporto_saka}</p>
                 </div>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Format</p>
-                  <p style={{ textTransform: 'capitalize', color: 'var(--text-primary)' }}>{tournament.format}</p>
+                  <p style={{ textTransform: 'capitalize', color: 'var(--text-primary)' }}>{tournament.turnyro_formatas}</p>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Start Date</p>
-                  <p style={{ color: 'var(--text-primary)' }}>{tournament.start}</p>
+                  <p style={{ color: 'var(--text-primary)' }}>{tournament.pradzia}</p>
                 </div>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>End Date</p>
-                  <p style={{ color: 'var(--text-primary)' }}>{tournament.end}</p>
+                  <p style={{ color: 'var(--text-primary)' }}>{tournament.pabaiga}</p>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Participants</p>
-                  <p style={{ color: 'var(--text-primary)' }}>{tournament.minParticipants} - {tournament.maxParticipants}</p>
+                  <p style={{ color: 'var(--text-primary)' }}>{tournament.minimalus_nariu_skacius} - {tournament.maksimalus_nariu_skaicius}</p>
                 </div>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Current Participants</p>
@@ -394,9 +361,6 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
           {!isJoining && (
             <Button onClick={() => setIsJoining(true)}>Join Tournament</Button>
-          )}
-          {canManage && (
-            <Button variant="secondary" onClick={handleGenerateReport}>Generate Report</Button>
           )}
         </div>
 
@@ -421,13 +385,15 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                   label="Select Team"
                   value={joinFormData.teamId}
                   onChange={(val) => setJoinFormData({ ...joinFormData, teamId: val })}
-                  options={userTeams.map(t => ({ value: t.id, label: t.name }))}
+                  options={userTeams.map(t => ({ value: String(t.id_Komanda), label: t.pavadinimas }))}
                   required
                 />
               )}
 
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <Button type="submit">Join</Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Joining...' : 'Join'}
+                </Button>
                 <Button variant="secondary" onClick={() => setIsJoining(false)}>Cancel</Button>
               </div>
             </form>
@@ -437,13 +403,8 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Games</h2>
-            {canManage && (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {!isCreatingGame && <Button onClick={() => setIsCreatingGame(true)}>Create Game</Button>}
-                {!isAddingGame && unaddedGames.length > 0 && (
-                  <Button variant="secondary" onClick={() => setIsAddingGame(true)}>Add Game</Button>
-                )}
-              </div>
+            {canManage && !isCreatingGame && (
+              <Button onClick={() => setIsCreatingGame(true)}>Create Game</Button>
             )}
           </div>
 
@@ -461,153 +422,43 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                   <Input
-                    label="Start Date & Time"
-                    type="datetime-local"
+                    label="Start Date"
+                    type="date"
                     value={gameFormData.start}
                     onChange={(val) => setGameFormData({ ...gameFormData, start: val })}
                     required
                   />
-
                   <Input
-                    label="End Date & Time"
-                    type="datetime-local"
+                    label="End Date"
+                    type="date"
                     value={gameFormData.end}
                     onChange={(val) => setGameFormData({ ...gameFormData, end: val })}
                     required
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                  <Input
-                    label="Winner Points"
-                    type="number"
-                    value={String(gameFormData.winnerPts)}
-                    onChange={(val) => setGameFormData({ ...gameFormData, winnerPts: parseInt(val) || 0 })}
-                    required
-                  />
-
-                  <Input
-                    label="Loser Points"
-                    type="number"
-                    value={String(gameFormData.loserPts)}
-                    onChange={(val) => setGameFormData({ ...gameFormData, loserPts: parseInt(val) || 0 })}
-                    required
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                  <Select
-                    label="Participant 1"
-                    value={gameFormData.participant1Id}
-                    onChange={(val) => setGameFormData({ ...gameFormData, participant1Id: val })}
-                    options={participants.map(p => {
-                      let participantName = '';
-                      if (p.participantType === 'Team') {
-                        const team = teams.find(t => t.id === p.participantId);
-                        participantName = team ? team.name : `Team ${p.participantId}`;
-                      } else {
-                        const user = users.find(u => u.id === p.participantId);
-                        participantName = user ? `${user.name} ${user.surname}` : `User ${p.participantId}`;
-                      }
-                      return {
-                        value: p.participantId,
-                        label: `${participantName} (${p.participantType})`
-                      };
-                    })}
-                    required
-                  />
-
-                  <Select
-                    label="Participant 2"
-                    value={gameFormData.participant2Id}
-                    onChange={(val) => setGameFormData({ ...gameFormData, participant2Id: val })}
-                    options={participants.map(p => {
-                      let participantName = '';
-                      if (p.participantType === 'Team') {
-                        const team = teams.find(t => t.id === p.participantId);
-                        participantName = team ? team.name : `Team ${p.participantId}`;
-                      } else {
-                        const user = users.find(u => u.id === p.participantId);
-                        participantName = user ? `${user.name} ${user.surname}` : `User ${p.participantId}`;
-                      }
-                      return {
-                        value: p.participantId,
-                        label: `${participantName} (${p.participantType})`
-                      };
-                    })}
-                    required
-                  />
-                </div>
-
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <Button type="submit">Create Game</Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? 'Creating...' : 'Create Game'}
+                  </Button>
                   <Button variant="secondary" onClick={() => setIsCreatingGame(false)}>Cancel</Button>
                 </div>
               </form>
             </Card>
           )}
 
-          {isAddingGame && (
-            <Card>
-              <form onSubmit={handleAddGameToTournament} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Add Game to Tournament</h3>
-
-                <Select
-                  label="Select Game"
-                  value={selectedGameId}
-                  onChange={(val) => setSelectedGameId(val)}
-                  options={unaddedGames.map(g => ({
-                    value: g.id,
-                    label: `${g.name} - ${new Date(g.start).toLocaleDateString()}`
-                  }))}
-                  required
-                />
-
-                {selectedGameId && (
-                  <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
-                    {(() => {
-                      const game = unaddedGames.find(g => g.id === selectedGameId);
-                      return game ? (
-                        <>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                            Start: {new Date(game.start).toLocaleString()}
-                          </p>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                            End: {new Date(game.end).toLocaleString()}
-                          </p>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                            Points: Winner {game.winnerPts}, Loser {game.loserPts}
-                          </p>
-                        </>
-                      ) : null;
-                    })()}
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <Button type="submit">Add to Tournament</Button>
-                  <Button variant="secondary" onClick={() => { setIsAddingGame(false); setSelectedGameId(''); }}>Cancel</Button>
-                </div>
-              </form>
-            </Card>
-          )}
-
-          {tournamentGames.length === 0 ? (
-            <p style={{ color: 'var(--text-secondary)' }}>No games added yet.</p>
+          {games.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)' }}>No games yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {tournamentGames.map(game => (
-                <Card key={game.id} onClick={() => router.push(`/games/${game.id}`)}>
+              {games.map(game => (
+                <Card key={game.id_Varzybos} onClick={() => router.push(`/games/${game.id_Varzybos}`)}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                     <div>
-                      <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{game.name}</h3>
+                      <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{game.pavadinimas}</h3>
                       <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                        {new Date(game.start).toLocaleString()}
+                        {game.pradžia} - {game.pabaiga}
                       </p>
-                    </div>
-                    <div style={{ textAlign: 'right', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                      <p>Winner: {game.winnerPts} pts</p>
-                      <p>Loser: {game.loserPts} pts</p>
                     </div>
                   </div>
                 </Card>
@@ -625,16 +476,16 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {participants.map(participant => (
-                <Card key={participant.id}>
+                <Card key={participant.id_Turnyro_dalyvis}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div>
                       <p style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                        {participant.participantType} - ID: {participant.participantId}
+                        {participant.dalyvio_tipas} {participant.dalyvio_tipas === 'User' ? `- User ID: ${participant.fk_Klientasid_Klientas}` : `- Team ID: ${participant.fk_Komandaid_Komanda}`}
                       </p>
-                      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Points: {participant.points}</p>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Points: {participant.taskai}</p>
                     </div>
-                    {participant.position > 0 && (
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Position: {participant.position}</p>
+                    {participant.pozicija > 0 && (
+                      <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Position: {participant.pozicija}</p>
                     )}
                   </div>
                 </Card>
