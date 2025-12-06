@@ -423,9 +423,9 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
           </div>
         )}
 
-        <Card>
+        <Card style={{ padding: '1.5rem' }}>
           {isEditing ? (
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <Input
                 label="Tournament Name"
                 value={formData.name}
@@ -562,9 +562,9 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         </div>
 
         {isJoining && (
-          <Card>
-            <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Join Tournament</h3>
+          <Card style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+            <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '1.25rem' }}>Join Tournament</h3>
 
               <Select
                 label="Join as"
@@ -606,9 +606,9 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
           </div>
 
           {isCreatingGame && (
-            <Card>
-              <form onSubmit={handleCreateGame} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Create New Game</h3>
+            <Card style={{ marginBottom: '2rem', padding: '2rem' }}>
+              <form onSubmit={handleCreateGame} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <h3 style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '1.5rem', marginBottom: '0.5rem' }}>Create New Game</h3>
 
                 <Input
                   label="Game Name"
@@ -666,15 +666,15 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                 </div>
 
                 {/* Referee Section */}
-                <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                     <input
                       type="checkbox"
                       checked={gameFormData.addReferee}
                       onChange={(e) => setGameFormData({ ...gameFormData, addReferee: e.target.checked })}
                       style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                     />
-                    <label style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer' }}
+                    <label style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}
                       onClick={() => setGameFormData({ ...gameFormData, addReferee: !gameFormData.addReferee })}>
                       Add Referee
                     </label>
@@ -763,15 +763,15 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                 </div>
 
                 {/* Sponsor Section */}
-                <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                     <input
                       type="checkbox"
                       checked={gameFormData.addSponsor}
                       onChange={(e) => setGameFormData({ ...gameFormData, addSponsor: e.target.checked })}
                       style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                     />
-                    <label style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer' }}
+                    <label style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}
                       onClick={() => setGameFormData({ ...gameFormData, addSponsor: !gameFormData.addSponsor })}>
                       Add Sponsor
                     </label>
@@ -841,15 +841,15 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                   )}
                 </div>
 
-                <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                     <input
                       type="checkbox"
                       checked={gameFormData.addLocation}
                       onChange={(e) => setGameFormData({ ...gameFormData, addLocation: e.target.checked })}
                       style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                     />
-                    <label style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer' }}
+                    <label style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}
                       onClick={() => setGameFormData({ ...gameFormData, addLocation: !gameFormData.addLocation })}>
                       Add Venue
                     </label>

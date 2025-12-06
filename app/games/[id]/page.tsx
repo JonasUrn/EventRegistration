@@ -293,19 +293,22 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
         )}
 
         {showSimilarGames && similarGames.length > 0 && (
-          <div className="border border-gray-700 bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-white">Similar Games</h2>
+          <div className="border-2 border-purple-500 bg-gradient-to-br from-purple-900/20 to-gray-800 rounded-xl shadow-lg p-6 mb-6">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-purple-500/30">
+              <div>
+                <h2 className="text-xl font-bold text-white">Similar Games</h2>
+                <p className="text-sm text-gray-400 mt-1">Based on points and location proximity</p>
+              </div>
               <Button variant="secondary" onClick={() => setShowSimilarGames(false)}>Close</Button>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 mt-4">
               {similarGames.map((similarGame) => (
                 <Card key={similarGame.id_Varzybos} onClick={() => router.push(`/games/${similarGame.id_Varzybos}`)}>
-                  <div className="flex justify-between items-center cursor-pointer">
+                  <div className="flex justify-between items-center cursor-pointer hover:bg-gray-700/50 transition-colors p-2 rounded">
                     <div>
-                      <p className="font-bold text-white">{similarGame.pavadinimas}</p>
-                      <p className="text-sm text-gray-400">{similarGame.pradžia} - {similarGame.pabaiga}</p>
-                      <p className="text-xs text-green-400">Similarity Score: {similarGame.score}</p>
+                      <p className="font-bold text-white text-lg">{similarGame.pavadinimas}</p>
+                      <p className="text-sm text-gray-400 mt-1">{similarGame.pradžia} - {similarGame.pabaiga}</p>
+                      <p className="text-xs text-purple-400 mt-2 font-semibold">Similarity Score: {similarGame.score}</p>
                     </div>
                   </div>
                 </Card>
@@ -316,7 +319,7 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
         <div className="border border-gray-700 bg-gray-800 rounded-2xl shadow-2xl p-10 mb-6">
           {isEditing ? (
-            <form onSubmit={handleSave} className="flex flex-col gap-4">
+            <form onSubmit={handleSave} className="flex flex-col gap-6">
               <Input
                 label="Game Name"
                 value={formData.name}
@@ -384,7 +387,7 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 return (
                   <Card key={participant.id_Varzybu_dalyvis}>
                     {isEditingThis && canManage ? (
-                      <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-6">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-sm text-gray-600 block mb-2">Points</label>
@@ -467,9 +470,9 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
           </div>
 
           {isAddingReferee && (
-            <Card>
-              <form onSubmit={handleAddReferee} className="flex flex-col gap-4 mb-4">
-                <h3 className="font-bold text-white">Add New Referee</h3>
+            <Card style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
+              <form onSubmit={handleAddReferee} className="flex flex-col gap-6">
+                <h3 className="font-bold text-white text-lg">Add New Referee</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="First Name"
@@ -556,9 +559,9 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
           </div>
 
           {isAddingSponsor && (
-            <Card>
-              <form onSubmit={handleAddSponsor} className="flex flex-col gap-4 mb-4">
-                <h3 className="font-bold text-white">Add Sponsor</h3>
+            <Card style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
+              <form onSubmit={handleAddSponsor} className="flex flex-col gap-6">
+                <h3 className="font-bold text-white text-lg">Add Sponsor</h3>
                 <Select
                   label="Select Sponsor"
                   value={sponsorFormData.selectedSponsor}

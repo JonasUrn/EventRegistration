@@ -16,6 +16,7 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [team, setTeam] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
+  const [membersWithDetails, setMembersWithDetails] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [suggestedMembers, setSuggestedMembers] = useState<any[]>([]);
@@ -46,6 +47,25 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
         const membersData = await api.teams.getMembers(parseInt(resolvedParams.id));
         setMembers(membersData);
+
+        const membersWithUserData = await Promise.all(
+          membersData.map(async (member: any) => {
+            try {
+              const userDetails = await api.users.getUserById(member.fk_Klientasid_Klientas);
+              return {
+                ...member,
+                userDetails: userDetails || null,
+              };
+            } catch (error) {
+              console.error('Failed to fetch user details:', error);
+              return {
+                ...member,
+                userDetails: null,
+              };
+            }
+          })
+        );
+        setMembersWithDetails(membersWithUserData);
 
         setFormData({
           name: teamData.pavadinimas,
@@ -128,6 +148,26 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
       const membersData = await api.teams.getMembers(team.id_Komanda);
       setMembers(membersData);
+
+      const membersWithUserData = await Promise.all(
+        membersData.map(async (member: any) => {
+          try {
+            const userDetails = await api.users.getUserById(member.fk_Klientasid_Klientas);
+            return {
+              ...member,
+              userDetails: userDetails || null,
+            };
+          } catch (error) {
+            console.error('Failed to fetch user details:', error);
+            return {
+              ...member,
+              userDetails: null,
+            };
+          }
+        })
+      );
+      setMembersWithDetails(membersWithUserData);
+
       setMessage({ type: 'success', text: 'Member added successfully!' });
       setNewMemberUsername('');
       setIsAddingMember(false);
@@ -149,6 +189,26 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
         await api.teams.removeMember(membershipId);
         const membersData = await api.teams.getMembers(team.id_Komanda);
         setMembers(membersData);
+
+        const membersWithUserData = await Promise.all(
+          membersData.map(async (member: any) => {
+            try {
+              const userDetails = await api.users.getUserById(member.fk_Klientasid_Klientas);
+              return {
+                ...member,
+                userDetails: userDetails || null,
+              };
+            } catch (error) {
+              console.error('Failed to fetch user details:', error);
+              return {
+                ...member,
+                userDetails: null,
+              };
+            }
+          })
+        );
+        setMembersWithDetails(membersWithUserData);
+
         setMessage({ type: 'success', text: 'Member removed successfully!' });
       } catch (error) {
         console.error('Failed to remove member:', error);
@@ -168,6 +228,49 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
     } catch (error) {
       console.error('Failed to get suggestions:', error);
       setMessage({ type: 'error', text: 'Failed to get member suggestions' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddSuggestedMember = async (userId: number) => {
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      await api.teams.addMember({
+        fk_Komandaid_Komanda: team.id_Komanda,
+        fk_Klientasid_Klientas: userId,
+        role: 'Player',
+      });
+
+      const membersData = await api.teams.getMembers(team.id_Komanda);
+      setMembers(membersData);
+
+      const membersWithUserData = await Promise.all(
+        membersData.map(async (member: any) => {
+          try {
+            const userDetails = await api.users.getUserById(member.fk_Klientasid_Klientas);
+            return {
+              ...member,
+              userDetails: userDetails || null,
+            };
+          } catch (error) {
+            console.error('Failed to fetch user details:', error);
+            return {
+              ...member,
+              userDetails: null,
+            };
+          }
+        })
+      );
+      setMembersWithDetails(membersWithUserData);
+
+      setSuggestedMembers(suggestedMembers.filter(m => m.id_Klientas !== userId));
+      setMessage({ type: 'success', text: 'Member added successfully!' });
+    } catch (error) {
+      console.error('Failed to add suggested member:', error);
+      setMessage({ type: 'error', text: 'Failed to add member' });
     } finally {
       setIsLoading(false);
     }
@@ -293,21 +396,28 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
           )}
 
           {showSuggestions && suggestedMembers.length > 0 && (
-            <div className="border border-gray-700 bg-gray-800 rounded-xl shadow-lg p-6 mb-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-white">Suggested Members</h3>
+            <div className="border-2 border-blue-500 bg-gradient-to-br from-blue-900/20 to-gray-800 rounded-xl shadow-lg p-6 mb-6">
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-blue-500/30">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Suggested Members</h3>
+                  <p className="text-sm text-gray-400 mt-1">Based on location, age, and tournament performance</p>
+                </div>
                 <Button variant="secondary" onClick={() => setShowSuggestions(false)}>Close</Button>
               </div>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 mt-4">
                 {suggestedMembers.map((candidate) => (
                   <Card key={candidate.id_Klientas}>
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-bold text-white">{candidate.vardas} {candidate.pavarde}</p>
+                        <p className="font-bold text-white text-lg">{candidate.vardas} {candidate.pavarde}</p>
+                        <p className="text-sm text-gray-400 mt-1">@{candidate.slapyvardis}</p>
                         <p className="text-sm text-gray-400">{candidate.el_pastas}</p>
-                        <p className="text-xs text-gray-500">{candidate.miestas}, {candidate.salis}</p>
-                        <p className="text-xs text-green-400">Match Score: {candidate.score}</p>
+                        <p className="text-xs text-gray-500 mt-1">{candidate.miestas}, {candidate.salis}</p>
+                        <p className="text-xs text-green-400 mt-2 font-semibold">Match Score: {candidate.score}</p>
                       </div>
+                      <Button onClick={() => handleAddSuggestedMember(candidate.id_Klientas)} disabled={isLoading}>
+                        Add to Team
+                      </Button>
                     </div>
                   </Card>
                 ))}
@@ -316,16 +426,27 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
           )}
 
           <div className="flex flex-col gap-4">
-            {members.length === 0 ? (
+            {membersWithDetails.length === 0 ? (
               <p className="text-gray-400">No members yet</p>
             ) : (
-              members.map((membership) => (
+              membersWithDetails.map((membership) => (
                 <Card key={membership.id_Komandos_naryste}>
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-bold text-white">User ID: {membership.fk_Klientasid_Klientas}</p>
-                      <p className="text-sm text-gray-400">{membership.role}</p>
-                      <p className="text-xs text-gray-500">Member since {membership.narys_nuo}</p>
+                      {membership.userDetails ? (
+                        <>
+                          <p className="font-bold text-white text-lg">{membership.userDetails.vardas} {membership.userDetails.pavarde}</p>
+                          <p className="text-sm text-gray-400 mt-1">@{membership.userDetails.slapyvardis}</p>
+                          <p className="text-sm text-gray-400">{membership.role}</p>
+                          <p className="text-xs text-gray-500 mt-1">Member since {membership.narys_nuo}</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold text-white">User ID: {membership.fk_Klientasid_Klientas}</p>
+                          <p className="text-sm text-gray-400">{membership.role}</p>
+                          <p className="text-xs text-gray-500">Member since {membership.narys_nuo}</p>
+                        </>
+                      )}
                     </div>
                     {isOwnerOrAdmin && membership.role !== 'Captain' && (
                       <Button variant="danger" onClick={() => handleRemoveMember(membership.id_Komandos_naryste)}>

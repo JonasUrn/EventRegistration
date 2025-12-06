@@ -94,7 +94,7 @@ const CreateTeamPage = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="border border-gray-700 bg-gray-800 rounded-2xl shadow-2xl p-10 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="border border-gray-700 bg-gray-800 rounded-2xl shadow-2xl p-10 flex flex-col gap-6">
           <Input
             label="Team Name"
             value={formData.name}
