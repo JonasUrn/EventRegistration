@@ -91,6 +91,7 @@ class SearchSimilarMembersController:
                 "id_Klientas": c["candidate"].id_Klientas,
                 "vardas": c["candidate"].vardas,
                 "pavarde": c["candidate"].pavarde,
+                "slapyvardis": c["candidate"].slapyvardis,
                 "el_pastas": c["candidate"].el_pastas,
                 "salis": c["candidate"].salis,
                 "miestas": c["candidate"].miestas,
