@@ -58,6 +58,14 @@ class AddMatchSponsorRequest(BaseModel):
     fk_Varzybosid_Varzybos: int
     fk_Remejasid_Remejas: int
 
+class LinkRefereeRequest(BaseModel):
+    fk_Varzybosid_Varzybos: int
+    fk_Teisejasid_Teisejas: int
+
+class LinkLocationRequest(BaseModel):
+    fk_Varzybosid_Varzybos: int
+    fk_Vietaid_Vieta: int
+
 class MatchesController:
     def __init__(self):
         self.router = APIRouter(prefix="/api/games", tags=["matches"])
@@ -70,7 +78,9 @@ class MatchesController:
         self.router.add_api_route("/participants", self.add_match_participant, methods=["POST"])
         self.router.add_api_route("/participants/{participant_id}", self.remove_match_participant, methods=["DELETE"])
         self.router.add_api_route("/locations", self.add_location, methods=["POST"])
+        self.router.add_api_route("/link-location", self.link_location, methods=["POST"])
         self.router.add_api_route("/referees", self.add_referee, methods=["POST"])
+        self.router.add_api_route("/link-referee", self.link_referee, methods=["POST"])
         self.router.add_api_route("/match-sponsors", self.add_match_sponsor, methods=["POST"])
         self.router.add_api_route("/{match_id}", self.get_match, methods=["GET"])
         self.router.add_api_route("/{match_id}", self.update_match, methods=["PUT"])
@@ -214,6 +224,30 @@ class MatchesController:
         db.commit()
         db.refresh(new_referee)
         return self._referee_to_dict(new_referee)
+
+    def link_referee(self, request: LinkRefereeRequest, db: Session = Depends(get_db)):
+        # Find the referee to link
+        referee = db.query(Referee).filter(Referee.id_Teisejas == request.fk_Teisejasid_Teisejas).first()
+        if not referee:
+            raise HTTPException(status_code=404, detail="Referee not found")
+
+        # Update the referee to link to the new match
+        referee.fk_Varzybosid_Varzybos = request.fk_Varzybosid_Varzybos
+        db.commit()
+        db.refresh(referee)
+        return self._referee_to_dict(referee)
+
+    def link_location(self, request: LinkLocationRequest, db: Session = Depends(get_db)):
+        # Find the location to link
+        location = db.query(Location).filter(Location.id_Vieta == request.fk_Vietaid_Vieta).first()
+        if not location:
+            raise HTTPException(status_code=404, detail="Location not found")
+
+        # Update the location to link to the new match
+        location.fk_Varzybosid_Varzybos = request.fk_Varzybosid_Varzybos
+        db.commit()
+        db.refresh(location)
+        return self._location_to_dict(location)
 
     def _match_to_dict(self, match):
         return {
