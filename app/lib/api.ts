@@ -118,6 +118,27 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
+
+    deleteAccount: async () => {
+      const token = authStorage.getToken();
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.users.delete}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(
+          response.status,
+          errorData.detail || 'Failed to delete account',
+          errorData
+        );
+      }
+
+      return response.json();
+    },
   },
 
   teams: {

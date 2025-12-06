@@ -11,6 +11,7 @@ export const API_ENDPOINTS = {
     me: '/api/users/me',
     byId: (id: number) => `/api/users/${id}`,
     byUsername: (username: string) => `/api/users/search/username/${username}`,
+    delete: '/api/users/delete',
   },
   teams: {
     list: '/api/teams',

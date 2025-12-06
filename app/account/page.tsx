@@ -123,10 +123,22 @@ const AccountPage = () => {
     }
   };
 
-  const handleDelete = () => {
-    if (confirm('Account deletion is not implemented yet. This will log you out instead.')) {
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await api.users.deleteAccount();
       authStorage.logout();
       router.push('/login');
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      if (error instanceof ApiError) {
+        setMessage({ type: 'error', text: error.message || 'Failed to delete account' });
+      } else {
+        setMessage({ type: 'error', text: 'An error occurred while deleting your account' });
+      }
     }
   };
 
