@@ -50,8 +50,12 @@ class EmailVerificationController:
                 server.login(SMTP_USERNAME, SMTP_PASSWORD)
                 server.send_message(msg)
                 server.quit()
+                print(f"Email sent successfully to {request.el_pastas}")
             except Exception as e:
                 print(f"Email sending failed: {e}")
+                print(f"SMTP Config - Server: {SMTP_SERVER}, Port: {SMTP_PORT}, Username: {SMTP_USERNAME[:3]}***")
+        else:
+            print("Email not configured - SMTP credentials missing")
 
         return {"message": "Verification code sent", "code": code}
 
