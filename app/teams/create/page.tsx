@@ -104,17 +104,6 @@ const CreateTeamPage = () => {
             required
           />
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-white">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              required
-              className="px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-500 transition-colors"
-              rows={4}
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Country"
@@ -128,6 +117,18 @@ const CreateTeamPage = () => {
               value={formData.city}
               onChange={(val) => setFormData({ ...formData, city: val })}
               required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-white">Description</label>
+            <p></p>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              required
+              className="px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gray-500 transition-colors"
+              rows={4}
             />
           </div>
 
