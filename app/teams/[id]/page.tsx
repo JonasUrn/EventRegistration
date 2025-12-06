@@ -27,6 +27,7 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
     description: '',
     country: '',
     city: '',
+    logoUrl: '',
   });
   const [newMemberUsername, setNewMemberUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -72,6 +73,7 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
           description: teamData.aprasymas || '',
           country: teamData.salis,
           city: teamData.miestas,
+          logoUrl: teamData.logo_url || '',
         });
       } catch (error) {
         console.error('Failed to fetch data:', error);
@@ -104,6 +106,7 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
         aprasymas: formData.description,
         salis: formData.country,
         miestas: formData.city,
+        logo_url: formData.logoUrl || null,
         fk_Klientasid_Klientas: team.fk_Klientasid_Klientas,
       });
 
@@ -282,7 +285,17 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
       <div className="max-w-4xl mx-auto px-6 py-12">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-white">{team.pavadinimas}</h1>
+          <div className="flex items-center gap-4">
+            {team.logo_url && (
+              <img
+                src={team.logo_url}
+                alt={`${team.pavadinimas} logo`}
+                className="w-16 h-16 object-contain rounded-lg"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+            )}
+            <h1 className="text-3xl font-bold text-white">{team.pavadinimas}</h1>
+          </div>
           {isOwnerOrAdmin && !isEditing && (
             <div className="flex gap-2">
               <Button onClick={handleEdit}>Edit</Button>
@@ -333,6 +346,13 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
                   required
                 />
               </div>
+
+              <Input
+                label="Logo URL (optional)"
+                value={formData.logoUrl}
+                onChange={(val) => setFormData({ ...formData, logoUrl: val })}
+                placeholder="https://example.com/logo.png"
+              />
 
               <div className="flex gap-2 mt-4">
                 <Button type="submit" disabled={isLoading}>

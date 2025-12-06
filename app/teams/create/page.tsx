@@ -16,6 +16,7 @@ const CreateTeamPage = () => {
     description: '',
     country: '',
     city: '',
+    logoUrl: '',
   });
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +48,7 @@ const CreateTeamPage = () => {
         aprasymas: formData.description,
         salis: formData.country,
         miestas: formData.city,
+        logo_url: formData.logoUrl || null,
         fk_Klientasid_Klientas: currentUser.id,
       });
 
@@ -128,6 +130,13 @@ const CreateTeamPage = () => {
               required
             />
           </div>
+
+          <Input
+            label="Logo URL (optional)"
+            value={formData.logoUrl}
+            onChange={(val) => setFormData({ ...formData, logoUrl: val })}
+            placeholder="https://example.com/logo.png"
+          />
 
           <div className="flex gap-2 mt-4">
             <Button type="submit">{isLoading ? 'Creating...' : 'Create Team'}</Button>
