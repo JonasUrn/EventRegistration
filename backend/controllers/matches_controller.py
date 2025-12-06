@@ -27,24 +27,26 @@ class AddMatchParticipantRequest(BaseModel):
     fk_Turnyro_dalyvisid_Turnyro_dalyvis: int
 
 class AddLocationRequest(BaseModel):
-    salis: str
-    miestas: str
-    adresas: str
-    koordinates: str
-    vietu_skaicius: str
-    patalpos_tipas: str
-    aprasymas: str
+    salis: Optional[str] = None
+    miestas: Optional[str] = None
+    adresas: Optional[str] = None
+    koordinates: Optional[str] = None
+    vietu_skaicius: Optional[str] = None
+    patalpos_tipas: Optional[str] = None
+    aprasymas: Optional[str] = None
     fk_Varzybosid_Varzybos: int
+    id_Vieta: Optional[int] = None
 
 class AddRefereeRequest(BaseModel):
-    vardas: str
-    pavarde: str
-    el_pastas: str
-    salis: str
-    miestas: str
-    licenzijos_id: str
-    tel_numeris: str
+    vardas: Optional[str] = None
+    pavarde: Optional[str] = None
+    el_pastas: Optional[str] = None
+    salis: Optional[str] = None
+    miestas: Optional[str] = None
+    licenzijos_id: Optional[str] = None
+    tel_numeris: Optional[str] = None
     fk_Varzybosid_Varzybos: int
+    id_Teisejas: Optional[int] = None
 
 class CreateSponsorRequest(BaseModel):
     pavadinimas: str
@@ -70,6 +72,8 @@ class MatchesController:
         self.router.add_api_route("/locations", self.add_location, methods=["POST"])
         self.router.add_api_route("/referees", self.add_referee, methods=["POST"])
         self.router.add_api_route("/{match_id}/referees", self.get_match_referees, methods=["GET"])
+        self.router.add_api_route("/all-referees", self.get_all_referees, methods=["GET"])
+        self.router.add_api_route("/all-locations", self.get_all_locations, methods=["GET"])
         self.router.add_api_route("/sponsors", self.get_all_sponsors, methods=["GET"])
         self.router.add_api_route("/sponsors", self.create_sponsor, methods=["POST"])
         self.router.add_api_route("/match-sponsors", self.add_match_sponsor, methods=["POST"])
@@ -150,32 +154,62 @@ class MatchesController:
         return {"message": "Participant removed successfully"}
 
     def add_location(self, request: AddLocationRequest, db: Session = Depends(get_db)):
-        new_location = Location(
-            salis=request.salis,
-            miestas=request.miestas,
-            adresas=request.adresas,
-            koordinates=request.koordinates,
-            vietu_skaicius=request.vietu_skaicius,
-            patalpos_tipas=request.patalpos_tipas,
-            aprasymas=request.aprasymas,
-            fk_Varzybosid_Varzybos=request.fk_Varzybosid_Varzybos
-        )
+        if request.id_Vieta:
+            existing_location = db.query(Location).filter(Location.id_Vieta == request.id_Vieta).first()
+            if not existing_location:
+                raise HTTPException(status_code=404, detail="Location not found")
+            new_location = Location(
+                salis=existing_location.salis,
+                miestas=existing_location.miestas,
+                adresas=existing_location.adresas,
+                koordinates=existing_location.koordinates,
+                vietu_skaicius=existing_location.vietu_skaicius,
+                patalpos_tipas=existing_location.patalpos_tipas,
+                aprasymas=existing_location.aprasymas,
+                fk_Varzybosid_Varzybos=request.fk_Varzybosid_Varzybos
+            )
+        else:
+            new_location = Location(
+                salis=request.salis,
+                miestas=request.miestas,
+                adresas=request.adresas,
+                koordinates=request.koordinates,
+                vietu_skaicius=request.vietu_skaicius,
+                patalpos_tipas=request.patalpos_tipas,
+                aprasymas=request.aprasymas,
+                fk_Varzybosid_Varzybos=request.fk_Varzybosid_Varzybos
+            )
         db.add(new_location)
         db.commit()
         db.refresh(new_location)
         return self._location_to_dict(new_location)
 
     def add_referee(self, request: AddRefereeRequest, db: Session = Depends(get_db)):
-        new_referee = Referee(
-            vardas=request.vardas,
-            pavarde=request.pavarde,
-            el_pastas=request.el_pastas,
-            salis=request.salis,
-            miestas=request.miestas,
-            licenzijos_id=request.licenzijos_id,
-            tel_numeris=request.tel_numeris,
-            fk_Varzybosid_Varzybos=request.fk_Varzybosid_Varzybos
-        )
+        if request.id_Teisejas:
+            existing_referee = db.query(Referee).filter(Referee.id_Teisejas == request.id_Teisejas).first()
+            if not existing_referee:
+                raise HTTPException(status_code=404, detail="Referee not found")
+            new_referee = Referee(
+                vardas=existing_referee.vardas,
+                pavarde=existing_referee.pavarde,
+                el_pastas=existing_referee.el_pastas,
+                salis=existing_referee.salis,
+                miestas=existing_referee.miestas,
+                licenzijos_id=existing_referee.licenzijos_id,
+                tel_numeris=existing_referee.tel_numeris,
+                fk_Varzybosid_Varzybos=request.fk_Varzybosid_Varzybos
+            )
+        else:
+            new_referee = Referee(
+                vardas=request.vardas,
+                pavarde=request.pavarde,
+                el_pastas=request.el_pastas,
+                salis=request.salis,
+                miestas=request.miestas,
+                licenzijos_id=request.licenzijos_id,
+                tel_numeris=request.tel_numeris,
+                fk_Varzybosid_Varzybos=request.fk_Varzybosid_Varzybos
+            )
         db.add(new_referee)
         db.commit()
         db.refresh(new_referee)
@@ -230,6 +264,14 @@ class MatchesController:
             Referee.fk_Varzybosid_Varzybos == match_id
         ).all()
         return [self._referee_to_dict(r) for r in referees]
+
+    def get_all_referees(self, db: Session = Depends(get_db)):
+        referees = db.query(Referee).all()
+        return [self._referee_to_dict(r) for r in referees]
+
+    def get_all_locations(self, db: Session = Depends(get_db)):
+        locations = db.query(Location).all()
+        return [self._location_to_dict(l) for l in locations]
 
     def get_all_sponsors(self, db: Session = Depends(get_db)):
         sponsors = db.query(Sponsor).all()
