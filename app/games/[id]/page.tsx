@@ -18,6 +18,7 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const [game, setGame] = useState<any>(null);
   const [tournament, setTournament] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
+  const [participantsWithDetails, setParticipantsWithDetails] = useState<any[]>([]);
   const [referees, setReferees] = useState<any[]>([]);
   const [sponsors, setSponsors] = useState<any[]>([]);
   const [allSponsors, setAllSponsors] = useState<any[]>([]);
@@ -73,6 +74,36 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
         const participantsData = await api.games.getParticipants(parseInt(resolvedParams.id));
         setParticipants(participantsData);
+
+        // Fetch tournament participants to get user/team names
+        const tournamentParticipantsData = await api.tournaments.getParticipants(gameData.fk_Turnyrasid_Turnyras);
+
+        // Enrich game participants with tournament participant details
+        const enrichedParticipants = await Promise.all(
+          participantsData.map(async (participant: any) => {
+            const tournamentParticipant = tournamentParticipantsData.find(
+              (tp: any) => tp.id_Turnyro_dalyvis === participant.fk_Turnyro_dalyvisid_Turnyro_dalyvis
+            );
+
+            if (tournamentParticipant) {
+              return {
+                ...participant,
+                displayName: tournamentParticipant.dalyvio_tipas === 'Team'
+                  ? tournamentParticipant.komanda_pavadinimas || 'Unknown Team'
+                  : `${tournamentParticipant.klientas_vardas || 'Unknown'} ${tournamentParticipant.klientas_pavarde || ''}`,
+                participantType: tournamentParticipant.dalyvio_tipas
+              };
+            }
+
+            return {
+              ...participant,
+              displayName: `Participant ID: ${participant.fk_Turnyro_dalyvisid_Turnyro_dalyvis}`,
+              participantType: 'Unknown'
+            };
+          })
+        );
+
+        setParticipantsWithDetails(enrichedParticipants);
 
         // Fetch referees
         try {
@@ -242,6 +273,33 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
       const participantsData = await api.games.getParticipants(game.id_Varzybos);
       setParticipants(participantsData);
 
+      // Refresh enriched participants data
+      const tournamentParticipantsData = await api.tournaments.getParticipants(game.fk_Turnyrasid_Turnyras);
+      const enrichedParticipants = await Promise.all(
+        participantsData.map(async (participant: any) => {
+          const tournamentParticipant = tournamentParticipantsData.find(
+            (tp: any) => tp.id_Turnyro_dalyvis === participant.fk_Turnyro_dalyvisid_Turnyro_dalyvis
+          );
+
+          if (tournamentParticipant) {
+            return {
+              ...participant,
+              displayName: tournamentParticipant.dalyvio_tipas === 'Team'
+                ? tournamentParticipant.komanda_pavadinimas || 'Unknown Team'
+                : `${tournamentParticipant.klientas_vardas || 'Unknown'} ${tournamentParticipant.klientas_pavarde || ''}`,
+              participantType: tournamentParticipant.dalyvio_tipas
+            };
+          }
+
+          return {
+            ...participant,
+            displayName: `Participant ID: ${participant.fk_Turnyro_dalyvisid_Turnyro_dalyvis}`,
+            participantType: 'Unknown'
+          };
+        })
+      );
+      setParticipantsWithDetails(enrichedParticipants);
+
       setMessage({ type: 'success', text: 'Participant updated successfully!' });
       setEditingParticipant(null);
     } catch (error) {
@@ -297,7 +355,7 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-purple-500/30">
               <div>
                 <h2 className="text-xl font-bold text-white">Similar Games</h2>
-                <p className="text-sm text-gray-400 mt-1">Based on points and location proximity</p>
+                <p className="text-sm text-gray-400 mt-1">Based on sport type, tournament format, and location</p>
               </div>
               <Button variant="secondary" onClick={() => setShowSimilarGames(false)}>Close</Button>
             </div>
@@ -308,7 +366,6 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     <div>
                       <p className="font-bold text-white text-lg">{similarGame.pavadinimas}</p>
                       <p className="text-sm text-gray-400 mt-1">{similarGame.pradžia} - {similarGame.pabaiga}</p>
-                      <p className="text-xs text-purple-400 mt-2 font-semibold">Similarity Score: {similarGame.score}</p>
                     </div>
                   </div>
                 </Card>
@@ -362,6 +419,10 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
                   {tournament?.pavadinimas || 'Unknown'}
                 </p>
               </div>
+              <div>
+                <p className="text-sm text-gray-600">Sport Type</p>
+                <p className="text-gray-300">{tournament?.sporto_saka || 'Unknown'}</p>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Start Date</p>
@@ -377,12 +438,12 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
         </div>
 
         <div className="mb-6">
-          <h2 className="text-xl font-bold mb-4 text-white">Participants ({participants.length})</h2>
-          {participants.length === 0 ? (
+          <h2 className="text-xl font-bold mb-4 text-white">Participants ({participantsWithDetails.length})</h2>
+          {participantsWithDetails.length === 0 ? (
             <p className="text-gray-400">No participants yet.</p>
           ) : (
             <div className="flex flex-col gap-2">
-              {participants.map(participant => {
+              {participantsWithDetails.map(participant => {
                 const isEditingThis = editingParticipant === participant.id_Varzybu_dalyvis;
                 return (
                   <Card key={participant.id_Varzybu_dalyvis}>
@@ -436,8 +497,8 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     ) : (
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="font-bold text-white">Tournament Participant ID: {participant.fk_Turnyro_dalyvisid_Turnyro_dalyvis}</p>
-                          <p className="text-sm text-gray-400">Points: {participant.taskai}</p>
+                          <p className="font-bold text-white">{participant.displayName}</p>
+                          <p className="text-sm text-gray-400">{participant.participantType} • Points: {participant.taskai}</p>
                         </div>
                         <div className="flex items-center gap-4">
                           {participant.yra_laimėtojas !== null && (

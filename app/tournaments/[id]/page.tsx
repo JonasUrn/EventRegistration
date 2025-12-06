@@ -46,7 +46,6 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
     end: '',
     participant1: '',
     participant2: '',
-    addReferee: false,
     refereeMode: 'existing' as 'existing' | 'new',
     existingReferee: '',
     refereeFirstName: '',
@@ -63,7 +62,6 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
     sponsorEmail: '',
     sponsorWebsite: '',
     sponsorClass: 'Auksinis',
-    addLocation: false,
     locationMode: 'existing' as 'existing' | 'new',
     existingLocation: '',
     locationCountry: '',
@@ -245,31 +243,26 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         });
       }
 
-      if (gameFormData.addReferee) {
-        if (gameFormData.refereeMode === 'existing') {
-          await api.games.addReferee({
-            vardas: '',
-            pavarde: '',
-            el_pastas: '',
-            tel_numeris: '',
-            salis: '',
-            miestas: '',
-            licenzijos_id: '',
-            fk_Varzybosid_Varzybos: newGame.id_Varzybos,
-            id_Teisejas: parseInt(gameFormData.existingReferee),
-          });
-        } else {
-          await api.games.addReferee({
-            vardas: gameFormData.refereeFirstName,
-            pavarde: gameFormData.refereeLastName,
-            el_pastas: gameFormData.refereeEmail,
-            tel_numeris: gameFormData.refereePhone,
-            salis: gameFormData.refereeCountry,
-            miestas: gameFormData.refereeCity,
-            licenzijos_id: gameFormData.refereeLicense,
-            fk_Varzybosid_Varzybos: newGame.id_Varzybos,
-          });
+      // Add referee (required)
+      if (gameFormData.refereeMode === 'existing') {
+        if (!gameFormData.existingReferee) {
+          throw new Error('Please select a referee');
         }
+        await api.games.linkReferee({
+          fk_Varzybosid_Varzybos: newGame.id_Varzybos,
+          fk_Teisejasid_Teisejas: parseInt(gameFormData.existingReferee),
+        });
+      } else {
+        await api.games.addReferee({
+          vardas: gameFormData.refereeFirstName,
+          pavarde: gameFormData.refereeLastName,
+          el_pastas: gameFormData.refereeEmail,
+          tel_numeris: gameFormData.refereePhone,
+          salis: gameFormData.refereeCountry,
+          miestas: gameFormData.refereeCity,
+          licenzijos_id: gameFormData.refereeLicense,
+          fk_Varzybosid_Varzybos: newGame.id_Varzybos,
+        });
       }
 
       if (gameFormData.addSponsor) {
@@ -292,31 +285,26 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         });
       }
 
-      if (gameFormData.addLocation) {
-        if (gameFormData.locationMode === 'existing') {
-          await api.games.addLocation({
-            salis: '',
-            miestas: '',
-            adresas: '',
-            koordinates: '',
-            vietu_skaicius: '',
-            patalpos_tipas: '',
-            aprasymas: '',
-            fk_Varzybosid_Varzybos: newGame.id_Varzybos,
-            id_Vieta: parseInt(gameFormData.existingLocation),
-          });
-        } else {
-          await api.games.addLocation({
-            salis: gameFormData.locationCountry,
-            miestas: gameFormData.locationCity,
-            adresas: gameFormData.locationAddress,
-            koordinates: gameFormData.locationCoordinates,
-            vietu_skaicius: gameFormData.locationSeats,
-            patalpos_tipas: gameFormData.locationFacilityType,
-            aprasymas: gameFormData.locationDescription,
-            fk_Varzybosid_Varzybos: newGame.id_Varzybos,
-          });
+      // Add venue (required)
+      if (gameFormData.locationMode === 'existing') {
+        if (!gameFormData.existingLocation) {
+          throw new Error('Please select a venue');
         }
+        await api.games.linkLocation({
+          fk_Varzybosid_Varzybos: newGame.id_Varzybos,
+          fk_Vietaid_Vieta: parseInt(gameFormData.existingLocation),
+        });
+      } else {
+        await api.games.addLocation({
+          salis: gameFormData.locationCountry,
+          miestas: gameFormData.locationCity,
+          adresas: gameFormData.locationAddress,
+          koordinates: gameFormData.locationCoordinates,
+          vietu_skaicius: gameFormData.locationSeats,
+          patalpos_tipas: gameFormData.locationFacilityType,
+          aprasymas: gameFormData.locationDescription,
+          fk_Varzybosid_Varzybos: newGame.id_Varzybos,
+        });
       }
 
       // Refresh games list
@@ -331,7 +319,6 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         end: '',
         participant1: '',
         participant2: '',
-        addReferee: false,
         refereeMode: 'existing',
         existingReferee: '',
         refereeFirstName: '',
@@ -348,7 +335,6 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         sponsorEmail: '',
         sponsorWebsite: '',
         sponsorClass: 'Auksinis',
-        addLocation: false,
         locationMode: 'existing',
         existingLocation: '',
         locationCountry: '',
@@ -667,99 +653,88 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
 
                 {/* Referee Section */}
                 <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={gameFormData.addReferee}
-                      onChange={(e) => setGameFormData({ ...gameFormData, addReferee: e.target.checked })}
-                      style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                    />
-                    <label style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}
-                      onClick={() => setGameFormData({ ...gameFormData, addReferee: !gameFormData.addReferee })}>
-                      Add Referee
-                    </label>
-                  </div>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '1rem' }}>
+                    Referee (Required)
+                  </h3>
 
-                  {gameFormData.addReferee && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <Select
+                      label="Referee Selection"
+                      value={gameFormData.refereeMode}
+                      onChange={(val) => setGameFormData({ ...gameFormData, refereeMode: val as 'existing' | 'new' })}
+                      options={[
+                        { value: 'existing', label: 'Select Existing Referee' },
+                        { value: 'new', label: 'Create New Referee' },
+                      ]}
+                    />
+                    {gameFormData.refereeMode === 'existing' ? (
                       <Select
-                        label="Referee Selection"
-                        value={gameFormData.refereeMode}
-                        onChange={(val) => setGameFormData({ ...gameFormData, refereeMode: val as 'existing' | 'new' })}
+                        label={`Existing Referee (${allReferees.length} available)`}
+                        value={gameFormData.existingReferee}
+                        onChange={(val) => setGameFormData({ ...gameFormData, existingReferee: val })}
                         options={[
-                          { value: 'existing', label: 'Select Existing Referee' },
-                          { value: 'new', label: 'Create New Referee' },
+                          { value: '', label: allReferees.length === 0 ? 'No referees available - create a new one' : 'Select referee...' },
+                          ...allReferees.map(r => ({
+                            value: r.id_Teisejas.toString(),
+                            label: `${r.vardas} ${r.pavarde} - ${r.salis}, ${r.miestas}`
+                          }))
                         ]}
+                        required={gameFormData.refereeMode === 'existing'}
                       />
-                      {gameFormData.refereeMode === 'existing' ? (
-                        <Select
-                          label={`Existing Referee (${allReferees.length} available)`}
-                          value={gameFormData.existingReferee}
-                          onChange={(val) => setGameFormData({ ...gameFormData, existingReferee: val })}
-                          options={[
-                            { value: '', label: allReferees.length === 0 ? 'No referees available - create a new one' : 'Select referee...' },
-                            ...allReferees.map(r => ({
-                              value: r.id_Teisejas.toString(),
-                              label: `${r.vardas} ${r.pavarde} - ${r.salis}, ${r.miestas}`
-                            }))
-                          ]}
-                          required={gameFormData.addReferee && gameFormData.refereeMode === 'existing'}
-                        />
-                      ) : (
-                        <>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                            <Input
-                              label="First Name"
-                              value={gameFormData.refereeFirstName}
-                              onChange={(val) => setGameFormData({ ...gameFormData, refereeFirstName: val })}
-                              required={gameFormData.addReferee && gameFormData.refereeMode === 'new'}
-                            />
-                            <Input
-                              label="Last Name"
-                              value={gameFormData.refereeLastName}
-                              onChange={(val) => setGameFormData({ ...gameFormData, refereeLastName: val })}
-                              required={gameFormData.addReferee && gameFormData.refereeMode === 'new'}
-                            />
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                            <Input
-                              label="Email"
-                              type="email"
-                              value={gameFormData.refereeEmail}
-                              onChange={(val) => setGameFormData({ ...gameFormData, refereeEmail: val })}
-                              required={gameFormData.addReferee && gameFormData.refereeMode === 'new'}
-                            />
-                            <Input
-                              label="Phone"
-                              value={gameFormData.refereePhone}
-                              onChange={(val) => setGameFormData({ ...gameFormData, refereePhone: val })}
-                              required={gameFormData.addReferee && gameFormData.refereeMode === 'new'}
-                            />
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                            <Input
-                              label="Country"
-                              value={gameFormData.refereeCountry}
-                              onChange={(val) => setGameFormData({ ...gameFormData, refereeCountry: val })}
-                              required={gameFormData.addReferee && gameFormData.refereeMode === 'new'}
-                            />
-                            <Input
-                              label="City"
-                              value={gameFormData.refereeCity}
-                              onChange={(val) => setGameFormData({ ...gameFormData, refereeCity: val })}
-                              required={gameFormData.addReferee && gameFormData.refereeMode === 'new'}
-                            />
-                          </div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                           <Input
-                            label="License ID"
-                            value={gameFormData.refereeLicense}
-                            onChange={(val) => setGameFormData({ ...gameFormData, refereeLicense: val })}
-                            required={gameFormData.addReferee && gameFormData.refereeMode === 'new'}
+                            label="First Name"
+                            value={gameFormData.refereeFirstName}
+                            onChange={(val) => setGameFormData({ ...gameFormData, refereeFirstName: val })}
+                            required={gameFormData.refereeMode === 'new'}
                           />
-                        </>
-                      )}
-                    </div>
-                  )}
+                          <Input
+                            label="Last Name"
+                            value={gameFormData.refereeLastName}
+                            onChange={(val) => setGameFormData({ ...gameFormData, refereeLastName: val })}
+                            required={gameFormData.refereeMode === 'new'}
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                          <Input
+                            label="Email"
+                            type="email"
+                            value={gameFormData.refereeEmail}
+                            onChange={(val) => setGameFormData({ ...gameFormData, refereeEmail: val })}
+                            required={gameFormData.refereeMode === 'new'}
+                          />
+                          <Input
+                            label="Phone"
+                            value={gameFormData.refereePhone}
+                            onChange={(val) => setGameFormData({ ...gameFormData, refereePhone: val })}
+                            required={gameFormData.refereeMode === 'new'}
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                          <Input
+                            label="Country"
+                            value={gameFormData.refereeCountry}
+                            onChange={(val) => setGameFormData({ ...gameFormData, refereeCountry: val })}
+                            required={gameFormData.refereeMode === 'new'}
+                          />
+                          <Input
+                            label="City"
+                            value={gameFormData.refereeCity}
+                            onChange={(val) => setGameFormData({ ...gameFormData, refereeCity: val })}
+                            required={gameFormData.refereeMode === 'new'}
+                          />
+                        </div>
+                        <Input
+                          label="License ID"
+                          value={gameFormData.refereeLicense}
+                          onChange={(val) => setGameFormData({ ...gameFormData, refereeLicense: val })}
+                          required={gameFormData.refereeMode === 'new'}
+                        />
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Sponsor Section */}
@@ -841,99 +816,89 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                   )}
                 </div>
 
+                {/* Venue Section */}
                 <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={gameFormData.addLocation}
-                      onChange={(e) => setGameFormData({ ...gameFormData, addLocation: e.target.checked })}
-                      style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                    />
-                    <label style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}
-                      onClick={() => setGameFormData({ ...gameFormData, addLocation: !gameFormData.addLocation })}>
-                      Add Venue
-                    </label>
-                  </div>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '1rem' }}>
+                    Venue (Required)
+                  </h3>
 
-                  {gameFormData.addLocation && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <Select
+                      label="Venue Selection"
+                      value={gameFormData.locationMode}
+                      onChange={(val) => setGameFormData({ ...gameFormData, locationMode: val as 'existing' | 'new' })}
+                      options={[
+                        { value: 'existing', label: 'Select Existing Venue' },
+                        { value: 'new', label: 'Create New Venue' },
+                      ]}
+                    />
+                    {gameFormData.locationMode === 'existing' ? (
                       <Select
-                        label="Venue Selection"
-                        value={gameFormData.locationMode}
-                        onChange={(val) => setGameFormData({ ...gameFormData, locationMode: val as 'existing' | 'new' })}
+                        label={`Existing Venue (${allLocations.length} available)`}
+                        value={gameFormData.existingLocation}
+                        onChange={(val) => setGameFormData({ ...gameFormData, existingLocation: val })}
                         options={[
-                          { value: 'existing', label: 'Select Existing Venue' },
-                          { value: 'new', label: 'Create New Venue' },
+                          { value: '', label: allLocations.length === 0 ? 'No venues available - create a new one' : 'Select venue...' },
+                          ...allLocations.map(l => ({
+                            value: l.id_Vieta.toString(),
+                            label: `${l.adresas}, ${l.miestas}, ${l.salis}`
+                          }))
                         ]}
+                        required={gameFormData.locationMode === 'existing'}
                       />
-                      {gameFormData.locationMode === 'existing' ? (
-                        <Select
-                          label={`Existing Venue (${allLocations.length} available)`}
-                          value={gameFormData.existingLocation}
-                          onChange={(val) => setGameFormData({ ...gameFormData, existingLocation: val })}
-                          options={[
-                            { value: '', label: allLocations.length === 0 ? 'No venues available - create a new one' : 'Select venue...' },
-                            ...allLocations.map(l => ({
-                              value: l.id_Vieta.toString(),
-                              label: `${l.adresas}, ${l.miestas}, ${l.salis}`
-                            }))
-                          ]}
-                          required={gameFormData.addLocation && gameFormData.locationMode === 'existing'}
-                        />
-                      ) : (
-                        <>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                            <Input
-                              label="Country"
-                              value={gameFormData.locationCountry}
-                              onChange={(val) => setGameFormData({ ...gameFormData, locationCountry: val })}
-                              required={gameFormData.addLocation && gameFormData.locationMode === 'new'}
-                            />
-                            <Input
-                              label="City"
-                              value={gameFormData.locationCity}
-                              onChange={(val) => setGameFormData({ ...gameFormData, locationCity: val })}
-                              required={gameFormData.addLocation && gameFormData.locationMode === 'new'}
-                            />
-                          </div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                           <Input
-                            label="Address"
-                            value={gameFormData.locationAddress}
-                            onChange={(val) => setGameFormData({ ...gameFormData, locationAddress: val })}
-                            required={gameFormData.addLocation && gameFormData.locationMode === 'new'}
+                            label="Country"
+                            value={gameFormData.locationCountry}
+                            onChange={(val) => setGameFormData({ ...gameFormData, locationCountry: val })}
+                            required={gameFormData.locationMode === 'new'}
                           />
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                            <Input
-                              label="Coordinates"
-                              value={gameFormData.locationCoordinates}
-                              onChange={(val) => setGameFormData({ ...gameFormData, locationCoordinates: val })}
-                              required={gameFormData.addLocation && gameFormData.locationMode === 'new'}
-                            />
-                            <Input
-                              label="Number of Seats"
-                              value={gameFormData.locationSeats}
-                              onChange={(val) => setGameFormData({ ...gameFormData, locationSeats: val })}
-                              required={gameFormData.addLocation && gameFormData.locationMode === 'new'}
-                            />
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                            <Input
-                              label="Facility Type"
-                              value={gameFormData.locationFacilityType}
-                              onChange={(val) => setGameFormData({ ...gameFormData, locationFacilityType: val })}
-                              required={gameFormData.addLocation && gameFormData.locationMode === 'new'}
-                            />
-                            <Input
-                              label="Description"
-                              value={gameFormData.locationDescription}
-                              onChange={(val) => setGameFormData({ ...gameFormData, locationDescription: val })}
-                              required={gameFormData.addLocation && gameFormData.locationMode === 'new'}
-                            />
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+                          <Input
+                            label="City"
+                            value={gameFormData.locationCity}
+                            onChange={(val) => setGameFormData({ ...gameFormData, locationCity: val })}
+                            required={gameFormData.locationMode === 'new'}
+                          />
+                        </div>
+                        <Input
+                          label="Address"
+                          value={gameFormData.locationAddress}
+                          onChange={(val) => setGameFormData({ ...gameFormData, locationAddress: val })}
+                          required={gameFormData.locationMode === 'new'}
+                        />
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                          <Input
+                            label="Coordinates"
+                            value={gameFormData.locationCoordinates}
+                            onChange={(val) => setGameFormData({ ...gameFormData, locationCoordinates: val })}
+                            required={gameFormData.locationMode === 'new'}
+                          />
+                          <Input
+                            label="Number of Seats"
+                            value={gameFormData.locationSeats}
+                            onChange={(val) => setGameFormData({ ...gameFormData, locationSeats: val })}
+                            required={gameFormData.locationMode === 'new'}
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                          <Input
+                            label="Facility Type"
+                            value={gameFormData.locationFacilityType}
+                            onChange={(val) => setGameFormData({ ...gameFormData, locationFacilityType: val })}
+                            required={gameFormData.locationMode === 'new'}
+                          />
+                          <Input
+                            label="Description"
+                            value={gameFormData.locationDescription}
+                            onChange={(val) => setGameFormData({ ...gameFormData, locationDescription: val })}
+                            required={gameFormData.locationMode === 'new'}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
