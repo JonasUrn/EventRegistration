@@ -6,7 +6,7 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 import Select from '../components/Select';
 import Message from '../components/Message';
-import { users } from '../data';
+import { api } from '../lib/api';
 import styles from '../layout.module.css';
 
 const RegisterPage = () => {
@@ -25,27 +25,38 @@ const RegisterPage = () => {
     isOrganizer: false,
   });
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
 
-    const existingUser = users.find(u => u.username === formData.username || u.email === formData.email);
+    try {
+      await api.auth.register({
+        vardas: formData.name,
+        pavarde: formData.surname,
+        el_pastas: formData.email,
+        tel_numeris: formData.phoneNo,
+        gimimo_data: formData.birthDate,
+        lytis: formData.sex,
+        slapyvardis: formData.username,
+        slaptazodis: formData.password,
+        salis: formData.country,
+        miestas: formData.city,
+        organizatorius: formData.isOrganizer,
+      });
 
-    if (existingUser) {
-      setMessage({ type: 'error', text: 'Username or email already exists' });
-      return;
+      setMessage({ type: 'success', text: 'Registration successful! Redirecting to login...' });
+      setTimeout(() => router.push('/login'), 1500);
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.message || 'Registration failed. Please try again.'
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    const newUser = {
-      id: String(users.length + 1),
-      ...formData,
-      isAdministrator: false,
-      emailWasVerified: false,
-    };
-
-    users.push(newUser);
-    setMessage({ type: 'success', text: 'Registration successful! Redirecting to login...' });
-    setTimeout(() => router.push('/login'), 2000);
   };
 
   return (
@@ -153,7 +164,9 @@ const RegisterPage = () => {
           </label>
 
           <div className={styles.buttonGroup}>
-            <Button type="submit">Register</Button>
+            <Button type="submit">
+              {isLoading ? 'Registering...' : 'Register'}
+            </Button>
             <Button variant="secondary" onClick={() => router.push('/login')}>
               Back to Login
             </Button>

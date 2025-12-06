@@ -1,27 +1,48 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navigation from '../components/Navigation';
 import Card from '../components/Card';
-import { getCurrentUser, games, tournaments } from '../data';
+import { authStorage } from '../lib/auth';
+import { api } from '../lib/api';
 
 const GamesPage = () => {
   const router = useRouter();
-  const currentUser = getCurrentUser();
+  const [games, setGames] = useState<any[]>([]);
+  const [tournaments, setTournaments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!authStorage.isAuthenticated()) {
       router.push('/login');
+      return;
     }
-  }, [currentUser, router]);
 
-  if (!currentUser) {
+    const fetchData = async () => {
+      try {
+        const [gamesData, tournamentsData] = await Promise.all([
+          api.games.getAll(),
+          api.tournaments.getAll()
+        ]);
+        setGames(gamesData);
+        setTournaments(tournamentsData);
+      } catch (error) {
+        console.error('Failed to fetch games:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [router]);
+
+  if (!authStorage.isAuthenticated()) {
     return null;
   }
 
   const sortedGames = [...games].sort((a, b) =>
-    new Date(a.start).getTime() - new Date(b.start).getTime()
+    new Date(a.pradžia).getTime() - new Date(b.pradžia).getTime()
   );
 
   const formatDateTime = (dateString: string) => {
@@ -36,27 +57,24 @@ const GamesPage = () => {
       <div className="max-w-7xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold mb-8 text-white">Upcoming Games</h1>
 
-        {sortedGames.length === 0 ? (
+        {isLoading ? (
+          <p className="text-gray-400">Loading games...</p>
+        ) : sortedGames.length === 0 ? (
           <p className="text-gray-400">No games available.</p>
         ) : (
           <div className="flex flex-col gap-4">
             {sortedGames.map(game => {
-              const tournament = tournaments.find(t => t.id === game.tournamentId);
+              const tournament = tournaments.find(t => t.id_Turnyras === game.fk_Turnyrasid_Turnyras);
               return (
-                <Card key={game.id} onClick={() => router.push(`/games/${game.id}`)}>
+                <Card key={game.id_Varzybos} onClick={() => router.push(`/games/${game.id_Varzybos}`)}>
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-bold text-lg text-white">{game.name}</h3>
+                      <h3 className="font-bold text-lg text-white">{game.pavadinimas}</h3>
                       <p className="text-sm text-gray-400 mb-1">
-                        Tournament: {tournament?.name || 'Unknown'}
+                        Tournament: {tournament?.pavadinimas || 'Unknown'}
                       </p>
-                      <p className="text-sm text-gray-400">Start: {formatDateTime(game.start)}</p>
-                      <p className="text-sm text-gray-400">End: {formatDateTime(game.end)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">Points</p>
-                      <p className="text-sm text-gray-400">Winner: {game.winnerPts}</p>
-                      <p className="text-sm text-gray-400">Loser: {game.loserPts}</p>
+                      <p className="text-sm text-gray-400">Start: {formatDateTime(game.pradžia)}</p>
+                      <p className="text-sm text-gray-400">End: {formatDateTime(game.pabaiga)}</p>
                     </div>
                   </div>
                 </Card>

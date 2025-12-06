@@ -1,23 +1,39 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navigation from '../components/Navigation';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { getCurrentUser, teams } from '../data';
+import { authStorage } from '../lib/auth';
+import { api } from '../lib/api';
 
 const TeamsPage = () => {
   const router = useRouter();
-  const currentUser = getCurrentUser();
+  const [teams, setTeams] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!authStorage.isAuthenticated()) {
       router.push('/login');
+      return;
     }
-  }, [currentUser, router]);
 
-  if (!currentUser) {
+    const fetchTeams = async () => {
+      try {
+        const data = await api.teams.getAll();
+        setTeams(data);
+      } catch (error) {
+        console.error('Failed to fetch teams:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTeams();
+  }, [router]);
+
+  if (!authStorage.isAuthenticated()) {
     return null;
   }
 
@@ -31,16 +47,18 @@ const TeamsPage = () => {
           <Button onClick={() => router.push('/teams/create')}>Create Team</Button>
         </div>
 
-        {teams.length === 0 ? (
+        {isLoading ? (
+          <p className="text-gray-400">Loading teams...</p>
+        ) : teams.length === 0 ? (
           <p className="text-gray-400">No teams available.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {teams.map(team => (
-              <Card key={team.id} onClick={() => router.push(`/teams/${team.id}`)}>
-                <h3 className="font-bold text-lg mb-2 text-white">{team.name}</h3>
-                <p className="text-sm text-gray-400 mb-2">{team.description}</p>
-                <p className="text-sm text-gray-400">{team.city}, {team.country}</p>
-                <p className="text-xs text-gray-500 mt-2">Created: {team.created}</p>
+              <Card key={team.id_Komanda} onClick={() => router.push(`/teams/${team.id_Komanda}`)}>
+                <h3 className="font-bold text-lg mb-2 text-white">{team.pavadinimas}</h3>
+                <p className="text-sm text-gray-400 mb-2">{team.aprasymas || 'No description'}</p>
+                <p className="text-sm text-gray-400">{team.miestas}, {team.salis}</p>
+                <p className="text-xs text-gray-500 mt-2">Created: {team.sukurta}</p>
               </Card>
             ))}
           </div>

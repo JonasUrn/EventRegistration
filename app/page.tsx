@@ -2,20 +2,20 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { getCurrentUser } from './data';
+import { authStorage } from './lib/auth';
 import Navigation from './components/Navigation';
 import Card from './components/Card';
 import styles from './layout.module.css';
 
 const Home = () => {
   const router = useRouter();
-  const currentUser = getCurrentUser();
+  const currentUser = authStorage.getCurrentUser();
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!authStorage.isAuthenticated()) {
       router.push('/login');
     }
-  }, [currentUser, router]);
+  }, [router]);
 
   if (!currentUser) {
     return null;
@@ -26,7 +26,7 @@ const Home = () => {
       <Navigation />
 
       <div className={styles.pageContent}>
-        <h1 className={styles.pageTitle}>Welcome, {currentUser.name}!</h1>
+        <h1 className={styles.pageTitle}>Welcome, {currentUser.vardas || currentUser.name}!</h1>
 
         <div className={styles.dashboardGrid}>
           <Card onClick={() => router.push('/account')}>
