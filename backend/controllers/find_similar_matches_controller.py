@@ -9,6 +9,7 @@ from config import get_db
 from classes.match import Match
 from classes.match_participant import MatchParticipant
 from classes.location import Location
+from classes.tournament import Tournament
 
 class FindSimilarMatchesRequest(BaseModel):
     match_id: int
@@ -22,6 +23,11 @@ class FindSimilarMatchesController:
         current_match = db.query(Match).filter(Match.id_Varzybos == request.match_id).first()
         if not current_match:
             raise HTTPException(status_code=404, detail="Match not found")
+
+        # Get tournament to access sport type
+        current_tournament = db.query(Tournament).filter(
+            Tournament.id_Turnyras == current_match.fk_Turnyrasid_Turnyras
+        ).first()
 
         current_location = db.query(Location).filter(
             Location.fk_Varzybosid_Varzybos == request.match_id
@@ -41,6 +47,22 @@ class FindSimilarMatchesController:
         for match in all_matches:
             score = 0
 
+            # Get tournament for this match to compare sport type
+            match_tournament = db.query(Tournament).filter(
+                Tournament.id_Turnyras == match.fk_Turnyrasid_Turnyras
+            ).first()
+
+            # HIGHEST PRIORITY: Same sport type (50 points)
+            if current_tournament and match_tournament:
+                if current_tournament.sporto_saka == match_tournament.sporto_saka:
+                    score += 50
+
+            # MEDIUM PRIORITY: Similar tournament format (10 points)
+            if current_tournament and match_tournament:
+                if current_tournament.turnyro_formatas == match_tournament.turnyro_formatas:
+                    score += 10
+
+            # LOWER PRIORITY: Similar average points (5 points max)
             match_participants = db.query(MatchParticipant).filter(
                 MatchParticipant.fk_Varzybosid_Varzybos == match.id_Varzybos
             ).all()
@@ -56,11 +78,20 @@ class FindSimilarMatchesController:
             elif points_diff <= 20:
                 score += 1
 
+            # LOWER PRIORITY: Nearby location (10 points max)
             match_location = db.query(Location).filter(
                 Location.fk_Varzybosid_Varzybos == match.id_Varzybos
             ).first()
 
             if current_location and match_location:
+                # Same city
+                if current_location.miestas == match_location.miestas:
+                    score += 8
+                # Same country
+                elif current_location.salis == match_location.salis:
+                    score += 4
+
+                # Geographic distance (if coordinates available)
                 try:
                     current_coords = current_location.koordinates.split(",")
                     match_coords = match_location.koordinates.split(",")
@@ -72,11 +103,11 @@ class FindSimilarMatchesController:
                     distance = math.sqrt((current_lat - match_lat)**2 + (current_lon - match_lon)**2)
 
                     if distance < 0.5:
-                        score += 10
-                    elif distance < 1.0:
                         score += 5
-                    elif distance < 2.0:
+                    elif distance < 1.0:
                         score += 3
+                    elif distance < 2.0:
+                        score += 1
                 except:
                     pass
 
@@ -94,8 +125,7 @@ class FindSimilarMatchesController:
                 "pavadinimas": m["match"].pavadinimas,
                 "pradžia": str(m["match"].pradžia),
                 "pabaiga": str(m["match"].pabaiga),
-                "fk_Turnyrasid_Turnyras": m["match"].fk_Turnyrasid_Turnyras,
-                "score": m["score"]
+                "fk_Turnyrasid_Turnyras": m["match"].fk_Turnyrasid_Turnyras
             }
             for m in top_matches
         ]

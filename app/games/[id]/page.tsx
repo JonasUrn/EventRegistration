@@ -297,7 +297,7 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-purple-500/30">
               <div>
                 <h2 className="text-xl font-bold text-white">Similar Games</h2>
-                <p className="text-sm text-gray-400 mt-1">Based on points and location proximity</p>
+                <p className="text-sm text-gray-400 mt-1">Based on sport type, tournament format, and location</p>
               </div>
               <Button variant="secondary" onClick={() => setShowSimilarGames(false)}>Close</Button>
             </div>
@@ -308,7 +308,6 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     <div>
                       <p className="font-bold text-white text-lg">{similarGame.pavadinimas}</p>
                       <p className="text-sm text-gray-400 mt-1">{similarGame.pradžia} - {similarGame.pabaiga}</p>
-                      <p className="text-xs text-purple-400 mt-2 font-semibold">Similarity Score: {similarGame.score}</p>
                     </div>
                   </div>
                 </Card>

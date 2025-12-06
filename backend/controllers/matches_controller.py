@@ -130,6 +130,29 @@ class MatchesController:
         if not match:
             raise HTTPException(status_code=404, detail="Match not found")
 
+        # Delete all related records first to avoid foreign key constraint violations
+
+        # Delete match participants
+        db.query(MatchParticipant).filter(
+            MatchParticipant.fk_Varzybosid_Varzybos == match_id
+        ).delete()
+
+        # Delete referees
+        db.query(Referee).filter(
+            Referee.fk_Varzybosid_Varzybos == match_id
+        ).delete()
+
+        # Delete locations
+        db.query(Location).filter(
+            Location.fk_Varzybosid_Varzybos == match_id
+        ).delete()
+
+        # Delete match sponsors
+        db.query(MatchSponsor).filter(
+            MatchSponsor.fk_Varzybosid_Varzybos == match_id
+        ).delete()
+
+        # Now delete the match itself
         db.delete(match)
         db.commit()
         return {"message": "Match deleted successfully"}
