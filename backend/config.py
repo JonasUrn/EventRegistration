@@ -5,7 +5,7 @@ import os
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+pymysql://root:@localhost:3306/game_portal"
+    "mysql+pymysql://root:@localhost:3306/naujas_game"
 )
 
 engine = create_engine(DATABASE_URL, echo=True)
@@ -23,7 +23,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "game-portal-secret-key-dev-2024-super-secu
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp-mail.outlook.com")
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")

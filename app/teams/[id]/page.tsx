@@ -18,6 +18,8 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const [members, setMembers] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
+  const [suggestedMembers, setSuggestedMembers] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -155,6 +157,22 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
     }
   };
 
+  const handleOfferMembers = async () => {
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      const suggestions = await api.teams.offerMembers(team.id_Komanda);
+      setSuggestedMembers(suggestions);
+      setShowSuggestions(true);
+      setMessage({ type: 'success', text: `Found ${suggestions.length} suggested members!` });
+    } catch (error) {
+      console.error('Failed to get suggestions:', error);
+      setMessage({ type: 'error', text: 'Failed to get member suggestions' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900">
       <Navigation />
@@ -246,7 +264,10 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-white">Team Members ({members.length})</h2>
             {isOwnerOrAdmin && !isAddingMember && (
-              <Button onClick={() => setIsAddingMember(true)}>Add Member</Button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <Button onClick={() => setIsAddingMember(true)}>Add Member</Button>
+                <Button onClick={handleOfferMembers} disabled={isLoading}>Offer Team Members</Button>
+              </div>
             )}
           </div>
 
@@ -264,11 +285,34 @@ const TeamDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 <Button type="submit" disabled={isLoading}>
                   {isLoading ? 'Adding...' : 'Add'}
                 </Button>
-                <Button variant="secondary" onClick={() => { setIsAddingMember(false); setNewMemberUserId(''); }}>
+                <Button variant="secondary" onClick={() => { setIsAddingMember(false); setNewMemberUsername(''); }}>
                   Cancel
                 </Button>
               </div>
             </form>
+          )}
+
+          {showSuggestions && suggestedMembers.length > 0 && (
+            <div className="border border-gray-700 bg-gray-800 rounded-xl shadow-lg p-6 mb-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-white">Suggested Members</h3>
+                <Button variant="secondary" onClick={() => setShowSuggestions(false)}>Close</Button>
+              </div>
+              <div className="flex flex-col gap-3">
+                {suggestedMembers.map((candidate) => (
+                  <Card key={candidate.id_Klientas}>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-bold text-white">{candidate.vardas} {candidate.pavarde}</p>
+                        <p className="text-sm text-gray-400">{candidate.el_pastas}</p>
+                        <p className="text-xs text-gray-500">{candidate.miestas}, {candidate.salis}</p>
+                        <p className="text-xs text-green-400">Match Score: {candidate.score}</p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
           )}
 
           <div className="flex flex-col gap-4">

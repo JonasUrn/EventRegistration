@@ -25,6 +25,8 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const [isAddingReferee, setIsAddingReferee] = useState(false);
   const [isAddingSponsor, setIsAddingSponsor] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<number | null>(null);
+  const [similarGames, setSimilarGames] = useState<any[]>([]);
+  const [showSimilarGames, setShowSimilarGames] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -250,6 +252,22 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
     }
   };
 
+  const handleFindSimilarGames = async () => {
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      const similar = await api.games.findSimilar(game.id_Varzybos);
+      setSimilarGames(similar);
+      setShowSimilarGames(true);
+      setMessage({ type: 'success', text: `Found ${similar.length} similar games!` });
+    } catch (error) {
+      console.error('Failed to find similar games:', error);
+      setMessage({ type: 'error', text: 'Failed to find similar games' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900">
       <Navigation />
@@ -257,17 +275,42 @@ const GameDetailPage = ({ params }: { params: Promise<{ id: string }> }) => {
       <div className="max-w-4xl mx-auto px-6 py-12">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-white">{game.pavadinimas}</h1>
-          {canManage && !isEditing && (
-            <div className="flex gap-2">
-              <Button onClick={handleEdit}>Edit</Button>
-              <Button variant="danger" onClick={handleDelete}>Delete Game</Button>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <Button onClick={handleFindSimilarGames} disabled={isLoading}>Find Similar Games</Button>
+            {canManage && !isEditing && (
+              <>
+                <Button onClick={handleEdit}>Edit</Button>
+                <Button variant="danger" onClick={handleDelete}>Delete Game</Button>
+              </>
+            )}
+          </div>
         </div>
 
         {message && (
           <div className="mb-4">
             <Message type={message.type}>{message.text}</Message>
+          </div>
+        )}
+
+        {showSimilarGames && similarGames.length > 0 && (
+          <div className="border border-gray-700 bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-white">Similar Games</h2>
+              <Button variant="secondary" onClick={() => setShowSimilarGames(false)}>Close</Button>
+            </div>
+            <div className="flex flex-col gap-3">
+              {similarGames.map((similarGame) => (
+                <Card key={similarGame.id_Varzybos} onClick={() => router.push(`/games/${similarGame.id_Varzybos}`)}>
+                  <div className="flex justify-between items-center cursor-pointer">
+                    <div>
+                      <p className="font-bold text-white">{similarGame.pavadinimas}</p>
+                      <p className="text-sm text-gray-400">{similarGame.pradžia} - {similarGame.pabaiga}</p>
+                      <p className="text-xs text-green-400">Similarity Score: {similarGame.score}</p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
 

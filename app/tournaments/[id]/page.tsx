@@ -110,6 +110,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         try {
           const sponsorsData = await api.games.getAllSponsors();
           setAllSponsors(sponsorsData);
+          console.log('Loaded sponsors:', sponsorsData);
         } catch (error) {
           console.error('Failed to fetch sponsors:', error);
         }
@@ -117,6 +118,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         try {
           const refereesData = await api.games.getAllReferees();
           setAllReferees(refereesData);
+          console.log('Loaded referees:', refereesData);
         } catch (error) {
           console.error('Failed to fetch referees:', error);
         }
@@ -124,6 +126,7 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
         try {
           const locationsData = await api.games.getAllLocations();
           setAllLocations(locationsData);
+          console.log('Loaded locations:', locationsData);
         } catch (error) {
           console.error('Failed to fetch locations:', error);
         }
@@ -401,12 +404,17 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
       <div className={layoutStyles.pageContentNarrow}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h1 className={layoutStyles.pageTitle} style={{ marginBottom: 0 }}>{tournament.pavadinimas}</h1>
-          {canManage && !isEditing && (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Button variant="secondary" onClick={handleEdit}>Edit</Button>
-              <Button variant="danger" onClick={handleDelete}>Delete</Button>
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {canManage && (
+              <Button onClick={() => router.push(`/tournaments/${tournament.id_Turnyras}/report`)}>Generate Report</Button>
+            )}
+            {canManage && !isEditing && (
+              <>
+                <Button variant="secondary" onClick={handleEdit}>Edit</Button>
+                <Button variant="danger" onClick={handleDelete}>Delete</Button>
+              </>
+            )}
+          </div>
         </div>
 
         {message && (
@@ -685,11 +693,11 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                       />
                       {gameFormData.refereeMode === 'existing' ? (
                         <Select
-                          label="Existing Referee"
+                          label={`Existing Referee (${allReferees.length} available)`}
                           value={gameFormData.existingReferee}
                           onChange={(val) => setGameFormData({ ...gameFormData, existingReferee: val })}
                           options={[
-                            { value: '', label: 'Select referee...' },
+                            { value: '', label: allReferees.length === 0 ? 'No referees available - create a new one' : 'Select referee...' },
                             ...allReferees.map(r => ({
                               value: r.id_Teisejas.toString(),
                               label: `${r.vardas} ${r.pavarde} - ${r.salis}, ${r.miestas}`
@@ -782,11 +790,11 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                       />
                       {gameFormData.sponsorMode === 'existing' ? (
                         <Select
-                          label="Existing Sponsor"
+                          label={`Existing Sponsor (${allSponsors.length} available)`}
                           value={gameFormData.existingSponsor}
                           onChange={(val) => setGameFormData({ ...gameFormData, existingSponsor: val })}
                           options={[
-                            { value: '', label: 'Select sponsor...' },
+                            { value: '', label: allSponsors.length === 0 ? 'No sponsors available - create a new one' : 'Select sponsor...' },
                             ...allSponsors.map(s => ({
                               value: s.id_Remejas.toString(),
                               label: `${s.pavadinimas} (${s.remejo_klase})`
@@ -860,11 +868,11 @@ const TournamentDetailPage = ({ params }: { params: Promise<{ id: string }> }) =
                       />
                       {gameFormData.locationMode === 'existing' ? (
                         <Select
-                          label="Existing Venue"
+                          label={`Existing Venue (${allLocations.length} available)`}
                           value={gameFormData.existingLocation}
                           onChange={(val) => setGameFormData({ ...gameFormData, existingLocation: val })}
                           options={[
-                            { value: '', label: 'Select venue...' },
+                            { value: '', label: allLocations.length === 0 ? 'No venues available - create a new one' : 'Select venue...' },
                             ...allLocations.map(l => ({
                               value: l.id_Vieta.toString(),
                               label: `${l.adresas}, ${l.miestas}, ${l.salis}`
