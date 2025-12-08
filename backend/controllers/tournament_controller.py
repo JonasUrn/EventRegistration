@@ -13,6 +13,7 @@ from classes.match_participant import MatchParticipant
 from classes.match import Match
 from classes.referee import Referee
 from classes.match_sponsor import MatchSponsor
+from classes.location import Location
 from classes.client import Client
 from classes.team import Team
 
@@ -97,7 +98,7 @@ class TournamentController:
         if not tournament:
             raise HTTPException(status_code=404, detail="Tournament not found")
 
-        # Delete cascade: referees -> match sponsors -> match participants -> matches -> tournament participants -> tournament
+        # Delete cascade: referees -> match sponsors -> match participants -> locations -> matches -> tournament participants -> tournament
         # Get all match IDs for this tournament
         match_ids = db.query(Match.id_Varzybos).filter(Match.fk_Turnyrasid_Turnyras == tournament_id).all()
         match_ids = [m[0] for m in match_ids]
@@ -116,15 +117,19 @@ class TournamentController:
                 MatchParticipant.fk_Varzybosid_Varzybos.in_(match_ids)
             ).delete(synchronize_session=False)
 
-        # 4. Delete all matches in this tournament
+        # 4. Delete all locations for matches in this tournament
+        if match_ids:
+            db.query(Location).filter(Location.fk_Varzybosid_Varzybos.in_(match_ids)).delete(synchronize_session=False)
+
+        # 5. Delete all matches in this tournament
         db.query(Match).filter(Match.fk_Turnyrasid_Turnyras == tournament_id).delete()
 
-        # 5. Delete all tournament participants in this tournament
+        # 6. Delete all tournament participants in this tournament
         db.query(TournamentParticipant).filter(
             TournamentParticipant.fk_Turnyrasid_Turnyras == tournament_id
         ).delete()
 
-        # 6. Delete the tournament
+        # 7. Delete the tournament
         db.delete(tournament)
         db.commit()
         return {"message": "Tournament deleted successfully"}

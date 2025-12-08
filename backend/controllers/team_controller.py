@@ -9,6 +9,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import get_db
 from classes.team import Team
 from classes.team_membership import TeamMembership
+from classes.match_participant import MatchParticipant
+from classes.tournament_participant import TournamentParticipant
 
 class CreateTeamRequest(BaseModel):
     pavadinimas: str
@@ -80,6 +82,31 @@ class TeamController:
         if not team:
             raise HTTPException(status_code=404, detail="Team not found")
 
+        # Delete cascade: match participants -> tournament participants -> team memberships -> team
+
+        # 1. Get tournament participants for this team
+        tournament_participants = db.query(TournamentParticipant).filter(
+            TournamentParticipant.fk_Komandaid_Komanda == team_id
+        ).all()
+        tournament_participant_ids = [tp.id_Turnyro_dalyvis for tp in tournament_participants]
+
+        # 2. Delete all match participants that reference these tournament participants
+        if tournament_participant_ids:
+            db.query(MatchParticipant).filter(
+                MatchParticipant.fk_Turnyro_dalyvisid_Turnyro_dalyvis.in_(tournament_participant_ids)
+            ).delete(synchronize_session=False)
+
+        # 3. Delete all tournament participants for this team
+        db.query(TournamentParticipant).filter(
+            TournamentParticipant.fk_Komandaid_Komanda == team_id
+        ).delete(synchronize_session=False)
+
+        # 4. Delete all team memberships for this team
+        db.query(TeamMembership).filter(
+            TeamMembership.fk_Komandaid_Komanda == team_id
+        ).delete(synchronize_session=False)
+
+        # 5. Delete the team itself
         db.delete(team)
         db.commit()
         return {"message": "Team deleted successfully"}
